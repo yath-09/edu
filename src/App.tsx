@@ -50,11 +50,7 @@ function App() {
                 <PlaygroundView 
                   onError={handleError}
                   onSuccess={handleSuccess}
-                  userContext={{
-                    age: 18,
-                    location: 'default',
-                    studyingFor: 'general'
-                  }}
+                  userContext={userContext}
                 />
               } 
             />
