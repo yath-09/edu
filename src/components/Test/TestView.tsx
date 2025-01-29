@@ -108,20 +108,35 @@ export const TestView: React.FC<TestViewProps> = ({
   };
 
   const startTest = async () => {
+    if (!examType || !topic) {
+      onError('Please select an exam type and topic');
+      return;
+    }
+
     try {
-      const generatedQuestions = await generateTest(topic, examType!);
-      const questionsWithIndex = generatedQuestions.map((q, idx) => ({ 
-        ...q, 
-        index: idx 
+      console.log('Starting test with:', { topic, examType });
+      setMode('test');
+      const generatedQuestions = await generateTest(topic, examType);
+      console.log('Generated questions:', generatedQuestions);
+      
+      if (!Array.isArray(generatedQuestions) || generatedQuestions.length !== 20) {
+        throw new Error(`Expected 20 questions, got ${generatedQuestions.length}`);
+      }
+
+      const questionsWithIndex = generatedQuestions.map((q, idx) => ({
+        ...q,
+        index: idx
       }));
+      
       setQuestions(questionsWithIndex);
       setCurrentQuestion(questionsWithIndex[0]);
-      setAnswers({});
+      setAnswers(Object.fromEntries(questionsWithIndex.map(q => [q.index, -1]))); // Initialize all answers as -1 (unanswered)
       setTestStarted(true);
       setStartTime(Date.now());
     } catch (error) {
-       console.log(error)
-      onError('Failed to generate test questions');
+      console.error('Test generation error:', error);
+      onError('Failed to generate test questions. Please try again.');
+      setMode('selection');
     }
   };
 
@@ -397,12 +412,15 @@ export const TestView: React.FC<TestViewProps> = ({
       </div>
 
       {mode === 'selection' && renderSelectionView()}
-      {mode === 'test' && renderTestView()}
+      {mode === 'test' && (
+        <>
+          {renderTestView()}
+          <button onClick={submitTest} className="btn btn-primary mt-6 w-full">
+            Submit Test
+          </button>
+        </>
+      )}
       {mode === 'result' && renderResultView()}
-
-      <button onClick={submitTest} className="btn btn-primary">
-        Submit Test
-      </button>
     </div>
   );
 };

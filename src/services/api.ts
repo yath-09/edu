@@ -16,9 +16,9 @@ const transformQuestion = (rawQuestion: Question): Question => ({
 });
 
 export const api = {
-  async getQuestion(topic: string, level: number): Promise<Question> {
+  async getQuestion(topic: string, level: number, userContext: UserContext): Promise<Question> {
     try {
-      const question = await gptService.getPlaygroundQuestion(topic, level);
+      const question = await gptService.getPlaygroundQuestion(topic, level, userContext);
       return transformQuestion(question);
     } catch (error) {
       console.error("Question generation error:", error);
@@ -26,10 +26,19 @@ export const api = {
     }
   },
 
-  async explore(
-    query: string,
-    userContext: UserContext
-  ): Promise<ExploreResponse> {
+  async generateTest(topic: string, examType: 'JEE' | 'NEET'): Promise<Question[]> {
+    try {
+      console.log('API generateTest called with:', { topic, examType });
+      const questions = await gptService.getTestQuestions(topic, examType);
+      console.log('API received questions:', questions);
+      return questions.map(transformQuestion);
+    } catch (error) {
+      console.error("Test generation error:", error);
+      throw new Error("Failed to generate test");
+    }
+  },
+
+  async explore(query: string, userContext: UserContext): Promise<ExploreResponse> {
     try {
       const response = await gptService.getExploreContent(query, userContext);
       return response;
@@ -37,18 +46,5 @@ export const api = {
       console.error("Explore error:", error);
       throw new Error("Failed to explore topic");
     }
-  },
-
-  async generateTest(
-    topic: string,
-    examType: "JEE" | "NEET"
-  ): Promise<Question[]> {
-    try {
-      const questions = await gptService.getTestQuestions(topic, examType);
-      return questions.map(transformQuestion);
-    } catch (error) {
-      console.error("Test generation error:", error);
-      throw new Error("Failed to generate test");
-    }
-  },
+  }
 };

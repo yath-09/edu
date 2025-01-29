@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { SearchBar } from '../../components/shared/SearchBar';
+import { SearchBar } from '../shared/SearchBar';
 import { GPTService } from '../../services/gptService';
 import { UserContext, MarkdownComponentProps } from '../../types';
 
@@ -98,29 +98,147 @@ const MarkdownComponents: Record<string, React.FC<MarkdownComponentProps>> = {
   ),
 };
 
-const Navigation: React.FC<NavigationProps> = ({ onPrevious, onNext, currentIndex, totalParts }) => (
-  <div className="flex justify-between items-center mt-4">
-    <button
-      onClick={onPrevious}
-      disabled={currentIndex === 0}
-      className="px-4 py-2 text-sm bg-gray-800 text-gray-300 rounded-lg 
-        disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      Previous
-    </button>
-    <span className="text-sm text-gray-400">
-      Part {currentIndex + 1} of {totalParts}
-    </span>
-    <button
-      onClick={onNext}
-      disabled={currentIndex === totalParts - 1}
-      className="px-4 py-2 text-sm bg-gray-800 text-gray-300 rounded-lg 
-        disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      Next
-    </button>
+const Navigation: React.FC<NavigationProps> = ({ 
+  onPrevious, 
+  onNext, 
+  currentIndex, 
+  totalParts 
+}) => (
+  <div className="mt-4 mb-2">
+    {/* Mobile Navigation - Always visible on mobile */}
+    <div className="md:hidden flex flex-col items-center gap-2">
+      <div className="flex items-center justify-between w-full px-4">
+        <button
+          onClick={onPrevious}
+          disabled={currentIndex === 0}
+          className="text-sm text-gray-400 hover:text-primary disabled:opacity-50 
+            disabled:cursor-not-allowed transition-colors"
+        >
+          ← Previous
+        </button>
+        <span className="text-xs text-gray-500">
+          Part {currentIndex + 1} of {totalParts}
+        </span>
+        <button
+          onClick={onNext}
+          disabled={currentIndex === totalParts - 1}
+          className="text-sm text-gray-400 hover:text-primary disabled:opacity-50 
+            disabled:cursor-not-allowed transition-colors"
+        >
+          Next →
+        </button>
+      </div>
+      <div className="flex items-center gap-1">
+        {Array.from({ length: totalParts }).map((_, idx) => (
+          <div
+            key={idx}
+            className={`w-1 h-1 rounded-full transition-all duration-300 ${
+              idx === currentIndex 
+                ? 'bg-primary w-2' 
+                : 'bg-gray-600'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+
+    {/* Desktop Navigation - Original design */}
+    <div className="hidden md:flex flex-col items-center gap-2">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onPrevious}
+          disabled={currentIndex === 0}
+          className="text-sm text-gray-400 hover:text-primary disabled:opacity-50 
+            disabled:cursor-not-allowed transition-colors px-2"
+        >
+          ← Previous
+        </button>
+        <div className="flex items-center gap-1.5">
+          {Array.from({ length: totalParts }).map((_, idx) => (
+            <div
+              key={idx}
+              className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                idx === currentIndex 
+                  ? 'bg-primary w-3' 
+                  : 'bg-gray-600'
+              }`}
+            />
+          ))}
+        </div>
+        <button
+          onClick={onNext}
+          disabled={currentIndex === totalParts - 1}
+          className="text-sm text-gray-400 hover:text-primary disabled:opacity-50 
+            disabled:cursor-not-allowed transition-colors px-2"
+        >
+          Next →
+        </button>
+      </div>
+      <span className="text-xs text-gray-500">
+        Part {currentIndex + 1} of {totalParts}
+      </span>
+    </div>
   </div>
 );
+
+const RelatedQueries: React.FC<{
+  queries: Array<{
+    query: string;
+    type: string;
+    context: string;
+  }>;
+  onQueryClick: (query: string) => void;
+}> = ({ queries, onQueryClick }) => {
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'prerequisite': return 'bg-blue-500/20 text-blue-400';
+      case 'extension': return 'bg-green-500/20 text-green-400';
+      case 'application': return 'bg-yellow-500/20 text-yellow-400';
+      case 'parallel': return 'bg-purple-500/20 text-purple-400';
+      case 'deeper': return 'bg-red-500/20 text-red-400';
+      default: return 'bg-gray-500/20 text-gray-400';
+    }
+  };
+
+  return (
+    <div className="mt-4 sm:mt-6 border-t border-gray-800 pt-4">
+      <h3 className="text-xs sm:text-sm font-medium text-gray-400 mb-2 px-2">People Also Asked</h3>
+      <div className="space-y-2">
+        {queries.map((query, index) => (
+          <div key={index} className="group">
+            <button
+              onClick={() => onQueryClick(query.query)}
+              className="w-full text-left hover:bg-gray-800/50 p-1.5 rounded-lg 
+                transition-all duration-200 relative"
+            >
+              <div className="flex items-center gap-2 pr-8">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                    <span className="text-xs sm:text-sm text-gray-200 group-hover:text-primary 
+                      transition-colors truncate">
+                      {query.query}
+                    </span>
+                    <span className={`text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full 
+                      whitespace-nowrap ${getTypeColor(query.type)}`}>
+                      {query.type}
+                    </span>
+                  </div>
+                  <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 line-clamp-2">
+                    {query.context}
+                  </p>
+                </div>
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 
+                  text-gray-500 group-hover:text-primary transition-colors">
+                  +
+                </span>
+              </div>
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export const ExploreView: React.FC<ExploreViewProps> = ({ 
   initialQuery, 
@@ -221,7 +339,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   }, [initialQuery, handleSearch]);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 min-h-screen flex flex-col">
+    <div className="max-w-4xl mx-auto px-2 sm:px-4 min-h-screen flex flex-col">
       {showInitialSearch ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="w-full max-w-3xl">
@@ -246,114 +364,57 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           </div>
         </div>
       ) : (
-        <div className="space-y-6 py-6">
-          <div className="space-y-4" ref={messagesEndRef}>
-            {messages.map((message, index) => (
-              <div key={index} className="flex flex-col space-y-3 animate-fadeIn">
-                <div className="flex items-start space-x-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white
-                    ${message.type === 'user' 
-                      ? 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-blue-500/20' 
-                      : 'bg-gradient-to-br from-primary to-purple-600 shadow-primary/20'}
-                    shadow-lg transform hover:scale-105 transition-all duration-200`}
-                  >
-                    {message.type === 'user' ? <UserAvatar /> : <ProfessorAvatar />}
-                  </div>
-                  
-                  <div className="flex-1">
-                    <div className={`rounded-2xl p-6 ${
-                      message.type === 'user' 
-                        ? 'bg-gray-800/30 backdrop-blur-sm border border-gray-700/50' 
-                        : 'bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm shadow-xl border border-gray-700/50'
-                    }`}>
-                      {message.type === 'user' ? (
-                        <p className="text-gray-200 text-lg font-medium">
-                          {message.content}
-                        </p>
-                      ) : (
-                        <div className="space-y-6">
-                          <div className="prose prose-invert max-w-none prose-lg">
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm, remarkMath]}
-                              rehypePlugins={[rehypeKatex]}
-                              components={MarkdownComponents}
-                            >
-                              {message.parts?.[message.currentPartIndex || 0] || ''}
-                            </ReactMarkdown>
-                          </div>
-                          
-                          {message.parts && message.parts.length > 1 && (
-                            <div className="flex flex-col items-center pt-6 border-t border-gray-700/50 space-y-4">
-                              <div className="flex items-center space-x-2 mb-2">
-                                {message.parts.map((_, idx) => (
-                                  <button
-                                    key={idx}
-                                    onClick={() => setMessages(prev => prev.map((msg, i) => 
-                                      i === index ? { ...msg, currentPartIndex: idx } : msg
-                                    ))}
-                                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 
-                                      ${idx === message.currentPartIndex 
-                                        ? 'bg-primary w-6' 
-                                        : 'bg-gray-600 hover:bg-gray-500'}`}
-                                  />
-                                ))}
-                              </div>
-                              <Navigation
-                                onPrevious={handlePreviousPart}
-                                onNext={handleNextPart}
-                                currentIndex={message.currentPartIndex || 0}
-                                totalParts={message.parts.length}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
+        <div className="relative flex flex-col min-h-screen">
+          <div className="space-y-4 sm:space-y-6 py-4 sm:py-6 pb-24 md:pb-20">
+            <div className="space-y-3 sm:space-y-4" ref={messagesEndRef}>
+              {messages.map((message, index) => (
+                <div key={index} className={`message ${message.type} px-2 sm:px-0`}>
+                  {message.type === 'user' ? (
+                    <div className="user-message flex items-start gap-3">
+                      <UserAvatar />
+                      <div className="flex-1">{message.content}</div>
                     </div>
+                  ) : (
+                    <div className="ai-message flex items-start gap-3">
+                      <ProfessorAvatar />
+                      <div className="flex-1">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm, remarkMath]}
+                          rehypePlugins={[rehypeKatex]}
+                          components={MarkdownComponents}
+                        >
+                          {message.parts && message.currentPartIndex !== undefined
+                            ? String(message.parts[message.currentPartIndex])
+                            : typeof message.content === 'object'
+                              ? JSON.stringify(message.content)
+                              : message.content || ''}
+                        </ReactMarkdown>
 
-                    {message.type === 'ai' && message.relatedQueries && (
-                      <div className="mt-6 animate-fadeIn">
-                        <h3 className="text-sm font-medium text-gray-400 mb-3">
-                          People also asked:
-                        </h3>
-                        <div className="flex flex-col space-y-2">
-                          {message.relatedQueries.map((query, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => handleRelatedQueryClick(query.query)}
-                              className="group flex items-center justify-between text-sm bg-gray-800/30 
-                                hover:bg-gray-700/30 text-gray-300 px-4 py-3 rounded-xl 
-                                transition-all duration-300 border border-gray-700/50 
-                                hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5
-                                w-full text-left"
-                            >
-                              <div className="flex-1">
-                                <div className="flex items-center space-x-2">
-                                  <span>{query.query}</span>
-                                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                    query.type === 'prerequisite' ? 'bg-blue-500/20 text-blue-400' :
-                                    query.type === 'extension' ? 'bg-green-500/20 text-green-400' :
-                                    query.type === 'application' ? 'bg-purple-500/20 text-purple-400' :
-                                    query.type === 'parallel' ? 'bg-yellow-500/20 text-yellow-400' :
-                                    'bg-red-500/20 text-red-400'
-                                  }`}>
-                                    {query.type}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-gray-400 mt-1">{query.context}</p>
-                              </div>
-                              <span className="text-primary opacity-70 group-hover:opacity-100 ml-3">+</span>
-                            </button>
-                          ))}
-                        </div>
+                        {message.parts && message.parts.length > 1 && (
+                          <Navigation
+                            onPrevious={handlePreviousPart}
+                            onNext={handleNextPart}
+                            currentIndex={message.currentPartIndex || 0}
+                            totalParts={message.parts.length}
+                          />
+                        )}
+
+                        {message.relatedQueries && message.relatedQueries.length > 0 && (
+                          <RelatedQueries
+                            queries={message.relatedQueries}
+                            onQueryClick={handleRelatedQueryClick}
+                          />
+                        )}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
-          <div className="sticky bottom-6 mt-8">
+          <div className="fixed md:sticky bottom-0 left-0 right-0 md:bottom-4 p-2 md:px-0 
+            bg-gradient-to-t from-background via-background to-transparent pb-4 pt-6">
             <SearchBar 
               key={`follow-up-${searchKey}`}
               onSearch={handleSearch} 

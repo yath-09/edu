@@ -8,11 +8,12 @@ export const useApi = () => {
 
   const getQuestion = async (
     topic: string,
-    level: number
+    level: number,
+    userContext: UserContext
   ): Promise<Question> => {
     try {
       setIsLoading(true);
-      return await api.getQuestion(topic, level);
+      return await api.getQuestion(topic, level, userContext);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "An error occurred";
@@ -22,12 +23,15 @@ export const useApi = () => {
     }
   };
 
-  const generateTest = async (topic: string, examType: "JEE" | "NEET") => {
+  const generateTest = async (topic: string, examType: 'JEE' | 'NEET') => {
     setIsLoading(true);
     try {
-      return await api.generateTest(topic, examType);
+      console.log('Generating test for:', { topic, examType });
+      const questions = await api.generateTest(topic, examType);
+      console.log('API response:', questions);
+      return questions;
     } catch (err) {
-      console.error("Test Generation Error:", err);
+      console.error('Test Generation Error:', err);
       throw err;
     } finally {
       setIsLoading(false);
