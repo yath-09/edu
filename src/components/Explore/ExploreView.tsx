@@ -339,13 +339,13 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   }, [initialQuery, handleSearch]);
 
   return (
-    <div className="max-w-4xl mx-auto px-2 sm:px-4 min-h-screen flex flex-col">
+    <div className="w-full min-h-screen flex flex-col md:max-w-4xl md:mx-auto">
       {showInitialSearch ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-full max-w-3xl">
+        <div className="flex-1 flex items-start md:items-center pt-32 md:pt-0">
+          <div className="w-full px-2 md:max-w-3xl md:mx-auto">
             <div className="text-center space-y-4 mb-8">
               <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
-               
+                
               </h1>
             </div>
             <SearchBar 
@@ -368,7 +368,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           <div className="space-y-4 sm:space-y-6 py-4 sm:py-6 pb-24 md:pb-20">
             <div className="space-y-3 sm:space-y-4" ref={messagesEndRef}>
               {messages.map((message, index) => (
-                <div key={index} className={`message ${message.type} px-2 sm:px-0`}>
+                <div key={index} className={`message ${message.type} px-3 sm:px-4 md:px-0`}>
                   {message.type === 'user' ? (
                     <div className="user-message flex items-start gap-3">
                       <UserAvatar />
@@ -413,7 +413,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
             </div>
           </div>
 
-          <div className="fixed md:sticky bottom-0 left-0 right-0 md:bottom-4 p-2 md:px-0 
+          <div className="fixed md:sticky bottom-0 left-0 right-0 md:bottom-4 px-2 sm:px-4 md:px-0 
             bg-gradient-to-t from-background via-background to-transparent pb-4 pt-6">
             <SearchBar 
               key={`follow-up-${searchKey}`}
