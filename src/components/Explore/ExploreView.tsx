@@ -1,19 +1,22 @@
 // src/components/Explore/ExploreView.tsx
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { useApi } from '../../hooks/useApi';
 import { SearchBar } from '../../components/shared/SearchBar';
 import { GPTService } from '../../services/gptService';
+import { UserContext, MarkdownComponentProps } from '../../types';
 
 interface Message {
   type: 'user' | 'ai';
-  content: string;
+  content?: string;
   parts?: string[];
-  relatedQueries?: string[];
-  id?: string;
+  relatedQueries?: Array<{
+    query: string;
+    type: string;
+    context: string;
+  }>;
   currentPartIndex?: number;
 }
 
@@ -22,6 +25,14 @@ interface ExploreViewProps {
   onError: (message: string) => void;
   onSuccess: (message: string) => void;
   onRelatedQueryClick?: (query: string) => void;
+  userContext: UserContext;
+}
+
+interface NavigationProps {
+  onPrevious: () => void;
+  onNext: () => void;
+  currentIndex: number;
+  totalParts: number;
 }
 
 const ProfessorAvatar = () => (
@@ -37,66 +48,92 @@ const UserAvatar = () => (
   </svg>
 );
 
-const MarkdownComponents = {
-  h1: ({ node, ...props }) => (
-    <h1 className="text-2xl font-bold text-gray-100 mt-6 mb-4" {...props} />
+const MarkdownComponents: Record<string, React.FC<MarkdownComponentProps>> = {
+  h1: ({ children, ...props }) => (
+    <h1 className="text-2xl font-bold text-gray-100 mt-6 mb-4" {...props}>
+      {children}
+    </h1>
   ),
-  h2: ({ node, ...props }) => (
-    <h2 className="text-xl font-semibold text-gray-100 mt-5 mb-3" {...props} />
+  h2: ({ children, ...props }) => (
+    <h2 className="text-xl font-semibold text-gray-100 mt-5 mb-3" {...props}>
+      {children}
+    </h2>
   ),
-  h3: ({ node, ...props }) => (
-    <h3 className="text-lg font-medium text-gray-200 mt-4 mb-2" {...props} />
+  h3: ({ children, ...props }) => (
+    <h3 className="text-lg font-medium text-gray-200 mt-4 mb-2" {...props}>
+      {children}
+    </h3>
   ),
-  p: ({ node, ...props }) => (
-    <p className="text-gray-300 my-2 text-base leading-relaxed" {...props} />
+  p: ({ children, ...props }) => (
+    <p className="text-gray-300 my-2 text-base leading-relaxed" {...props}>
+      {children}
+    </p>
   ),
-  ul: ({ node, ...props }) => (
-    <ul className="list-disc list-inside my-2 text-gray-300" {...props} />
+  ul: ({ children, ...props }) => (
+    <ul className="list-disc list-inside my-2 text-gray-300" {...props}>
+      {children}
+    </ul>
   ),
-  ol: ({ node, ...props }) => (
-    <ol className="list-decimal list-inside my-2 text-gray-300" {...props} />
+  ol: ({ children, ...props }) => (
+    <ol className="list-decimal list-inside my-2 text-gray-300" {...props}>
+      {children}
+    </ol>
   ),
-  li: ({ node, ...props }) => (
-    <li className="my-1 text-gray-300" {...props} />
+  li: ({ children, ...props }) => (
+    <li className="my-1 text-gray-300" {...props}>
+      {children}
+    </li>
   ),
-  code: ({ node, inline, ...props }) => (
-    inline 
-      ? <code className="bg-gray-700 px-1 rounded text-sm" {...props} />
-      : <code className="block bg-gray-700 p-2 rounded my-2 text-sm overflow-x-auto" {...props} />
+  code: ({ children, inline, ...props }) => (
+    inline ? 
+      <code className="bg-gray-700 px-1 rounded text-sm" {...props}>{children}</code> :
+      <code className="block bg-gray-700 p-2 rounded my-2 text-sm overflow-x-auto" {...props}>
+        {children}
+      </code>
   ),
-  blockquote: ({ node, ...props }) => (
-    <blockquote className="border-l-4 border-gray-500 pl-4 my-2 text-gray-400 italic" {...props} />
+  blockquote: ({ children, ...props }) => (
+    <blockquote className="border-l-4 border-gray-500 pl-4 my-2 text-gray-400 italic" {...props}>
+      {children}
+    </blockquote>
   ),
 };
 
-const processContent = (content: string): string => {
-  if (!content) return '';
-  
-  // Remove any section prefixes
-  return content
-    .replace(/^(First|Second|Third|Fourth|Fifth)\s+[Ss]ection:?\s*/gm, '')
-    .replace(/^[Ss]ection\s*\d*:?\s*/gm, '')
-    .replace(/^[Pp]art\s*\d*:?\s*/gm, '')
-    .replace(/^(Introduction|Overview):?\s*/gm, '')
-    .trim();
-};
+const Navigation: React.FC<NavigationProps> = ({ onPrevious, onNext, currentIndex, totalParts }) => (
+  <div className="flex justify-between items-center mt-4">
+    <button
+      onClick={onPrevious}
+      disabled={currentIndex === 0}
+      className="px-4 py-2 text-sm bg-gray-800 text-gray-300 rounded-lg 
+        disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      Previous
+    </button>
+    <span className="text-sm text-gray-400">
+      Part {currentIndex + 1} of {totalParts}
+    </span>
+    <button
+      onClick={onNext}
+      disabled={currentIndex === totalParts - 1}
+      className="px-4 py-2 text-sm bg-gray-800 text-gray-300 rounded-lg 
+        disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      Next
+    </button>
+  </div>
+);
 
-export const ExploreView = React.memo(({ 
+export const ExploreView: React.FC<ExploreViewProps> = ({ 
   initialQuery, 
   onError, 
   onSuccess,
-  onRelatedQueryClick 
-}: ExploreViewProps) => {
+  onRelatedQueryClick,
+  userContext 
+}) => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [currentPartIndex, setCurrentPartIndex] = useState(0);
   const [showInitialSearch, setShowInitialSearch] = useState(true);
   const [searchKey, setSearchKey] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const gptService = useMemo(() => new GPTService(), []);
-  const userContext = { /* your user context here */ };
-  const [content, setContent] = useState<ExploreResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [currentQuery, setCurrentQuery] = useState('');
 
   const scrollToTop = () => {
     window.scrollTo({
@@ -121,7 +158,7 @@ export const ExploreView = React.memo(({
       }]);
       
       scrollToTop();
-      onSuccess();
+      onSuccess('Content loaded successfully');
     } catch (error) {
       console.error('Full error details:', error);
       onError('Failed to load content');
@@ -136,92 +173,52 @@ export const ExploreView = React.memo(({
     scrollToTop();
   }, [onRelatedQueryClick, handleSearch]);
 
-  const handlePreviousPart = useCallback(() => {
-    setMessages(prev => {
-      const lastMessageIndex = prev.length - 1;
-      return prev.map((msg, idx) => {
-        if (idx === lastMessageIndex && msg.type === 'ai' && msg.currentPartIndex && msg.currentPartIndex > 0) {
-          return {
-            ...msg,
-            currentPartIndex: msg.currentPartIndex - 1
-          };
-        }
-        return msg;
-      });
-    });
-  }, []);
-
   const handleNextPart = useCallback(() => {
     setMessages(prev => {
       const lastMessageIndex = prev.length - 1;
-      return prev.map((msg, idx) => {
-        if (idx === lastMessageIndex && msg.type === 'ai' && msg.parts && 
-            msg.currentPartIndex !== undefined && msg.currentPartIndex < msg.parts.length - 1) {
-          return {
-            ...msg,
-            currentPartIndex: msg.currentPartIndex + 1
-          };
-        }
-        return msg;
-      });
+      const lastMessage = prev[lastMessageIndex];
+      
+      if (lastMessage?.type === 'ai' && 
+          lastMessage.parts && 
+          lastMessage.currentPartIndex !== undefined && 
+          lastMessage.currentPartIndex < lastMessage.parts.length - 1) {
+        
+        const newMessages = [...prev];
+        newMessages[lastMessageIndex] = {
+          ...lastMessage,
+          currentPartIndex: lastMessage.currentPartIndex + 1
+        };
+        return newMessages;
+      }
+      return prev;
     });
   }, []);
 
-  const handleExplore = async (query: string, previousContext?: string) => {
-    setIsLoading(true);
-    try {
-      const response = await gptService.getExploreContent(query, userContext, previousContext);
-      setContent(response);
-      setCurrentQuery(query);
-    } catch (error) {
-      console.error('Full error details:', error);
-      onError('Failed to load content');
-    }
-    setIsLoading(false);
-  };
-
-  const handleKnowMore = async () => {
-    if (!content?.context || !currentQuery) return;
-    
-    setIsLoading(true);
-    try {
-      const moreContent = await gptService.getExploreContent(
-        currentQuery,
-        userContext,
-        content.context
-      );
+  const handlePreviousPart = useCallback(() => {
+    setMessages(prev => {
+      const lastMessageIndex = prev.length - 1;
+      const lastMessage = prev[lastMessageIndex];
       
-      // Append new content to existing content
-      setContent(prev => prev ? {
-        parts: [...prev.parts, ...moreContent.parts],
-        relatedQueries: moreContent.relatedQueries,
-        context: moreContent.context
-      } : moreContent);
-      
-    } catch (error) {
-      console.error('Error loading more content:', error);
-      onError('Failed to load additional content');
-    }
-    setIsLoading(false);
-  };
+      if (lastMessage?.type === 'ai' && 
+          lastMessage.currentPartIndex !== undefined && 
+          lastMessage.currentPartIndex > 0) {
+        
+        const newMessages = [...prev];
+        newMessages[lastMessageIndex] = {
+          ...lastMessage,
+          currentPartIndex: lastMessage.currentPartIndex - 1
+        };
+        return newMessages;
+      }
+      return prev;
+    });
+  }, []);
 
   useEffect(() => {
     if (initialQuery) {
       handleSearch(initialQuery);
     }
   }, [initialQuery, handleSearch]);
-
-  const currentMessage = messages[messages.length - 1];
-  const hasMultipleParts = currentMessage?.parts && currentMessage.parts.length > 1;
-  const showNavigation = currentMessage?.type === 'ai' && hasMultipleParts;
-
-  const formatRelatedQuery = (query: string): string => {
-    return query
-      .replace(/\?+/g, '?') // Replace multiple question marks with single one
-      .replace(/\s+\?/g, '?') // Remove space before question mark
-      .replace(/^(What|How|Why|Can|Is|Are|Does|Do)\s/, '') // Remove common question starters
-      .replace(/^\w/, c => c.toUpperCase()); // Capitalize first letter
-  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 min-h-screen flex flex-col">
@@ -244,6 +241,7 @@ export const ExploreView = React.memo(({
                 { text: 'Machine Learning', icon: '🤖' },
                 { text: 'World History', icon: '🌍' }
               ]}
+              className="bg-gray-900/80"
             />
           </div>
         </div>
@@ -300,31 +298,12 @@ export const ExploreView = React.memo(({
                                   />
                                 ))}
                               </div>
-                              <div className="flex items-center space-x-4">
-                                <button
-                                  onClick={() => handlePreviousPart()}
-                                  disabled={!message.currentPartIndex}
-                                  className={`px-4 py-2 rounded-lg transition-all duration-200 
-                                    ${!message.currentPartIndex
-                                      ? 'text-gray-500 cursor-not-allowed'
-                                      : 'text-white hover:bg-gray-700/70 hover:shadow-lg'}`}
-                                >
-                                  ← Previous
-                                </button>
-                                <span className="text-gray-400">
-                                  {(message.currentPartIndex || 0) + 1} / {message.parts.length}
-                                </span>
-                                <button
-                                  onClick={() => handleNextPart()}
-                                  disabled={message.currentPartIndex === message.parts.length - 1}
-                                  className={`px-4 py-2 rounded-lg transition-all duration-200
-                                    ${message.currentPartIndex === message.parts.length - 1
-                                      ? 'text-gray-500 cursor-not-allowed'
-                                      : 'text-white hover:bg-gray-700/70 hover:shadow-lg'}`}
-                                >
-                                  Next →
-                                </button>
-                              </div>
+                              <Navigation
+                                onPrevious={handlePreviousPart}
+                                onNext={handleNextPart}
+                                currentIndex={message.currentPartIndex || 0}
+                                totalParts={message.parts.length}
+                              />
                             </div>
                           )}
                         </div>
@@ -387,6 +366,6 @@ export const ExploreView = React.memo(({
       )}
     </div>
   );
-});
+};
 
 ExploreView.displayName = 'ExploreView';
