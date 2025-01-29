@@ -50,46 +50,60 @@ export class GPTService {
         ],
         "relatedQueries": [
           {
-            "query": "Basic Prerequisite Topic",
+            "query": "EXAMPLE: If main topic is 'Quantum Physics', then write 'Wave-Particle Duality'",
             "type": "prerequisite",
-            "context": "[Make a surprising connection to daily life about this specific prerequisite]"
+            "context": "EXAMPLE: 'POV: You just found out everything you touch is actually 99.9% empty space 🤯'"
           },
           {
-            "query": "Next Level Topic",
+            "query": "EXAMPLE: If topic is 'Python Programming', then write 'Object-Oriented Programming'",
             "type": "extension",
-            "context": "[Tease an unexpected application or mind-blowing fact about this specific topic]"
+            "context": "EXAMPLE: 'The coding secret that made Minecraft possible... and why it's breaking the internet'"
           },
           {
-            "query": "Real World Application",
+            "query": "EXAMPLE: If topic is 'Chemical Bonding', then write 'Drug Design Chemistry'",
             "type": "application",
-            "context": "[Share an exciting real-world use that most people don't know about]"
+            "context": "EXAMPLE: 'They said this molecule was impossible to make... until this happened'"
           },
           {
-            "query": "Similar Concept",
+            "query": "EXAMPLE: If topic is 'Natural Selection', then write 'AI Evolution'",
             "type": "parallel",
-            "context": "[Point out a surprising similarity with something totally unexpected]"
+            "context": "EXAMPLE: 'Wait till you see how AI is literally copying nature's 4-billion-year cheat code'"
           },
           {
-            "query": "Advanced Topic",
+            "query": "EXAMPLE: If topic is 'Gravity', then write 'Black Holes'",
             "type": "deeper",
-            "context": "[Hook with a fascinating mystery or unsolved question in this area]"
+            "context": "EXAMPLE: 'The universe's biggest mystery that even Einstein couldn't solve... until now'"
           }
         ]
       }
 
       Content guidelines:
       - Each main content part should be detailed and comprehensive (minimum 150-200 words each)
-      - Make related queries specific to the main topic being discussed
-      - Create unique, topic-specific hooks for each context (15-20 words)
-      - Context should reveal something surprising or intriguing about that specific topic
-      - Use extremely simple English and Gen-Z language
-      - Reference social media and pop culture
-      - Make it engaging without emojis
-      - Keep it casual and conversational
-      - Each context should make readers curious about that specific subtopic
-      
+      - For related queries:
+        * 'query' must be an ACTUAL TOPIC NAME, not a description
+        * 'context' must be a viral-style hook that creates suspense or curiosity
+        * Keep contexts short and punchy (10-15 words)
+        * Make each hook unique and topic-specific:
+          - Create unexpected connections to daily life
+          - Use current trends and viral content styles
+          - Make surprising revelations about the topic
+          - Connect to things people already know
+          - Challenge common assumptions
+          - Reveal hidden aspects of the topic
+          - Use humor and unexpected comparisons
+          - Create "wait, what?" moments
+          - Make complex ideas sound intriguing
+          - Use conversational, Gen-Z style language
+
+        * Examples of good hooks (for inspiration only, create your own):
+          "Your favorite game mechanic was actually invented by accident"
+          "The math equation that predicted TikTok would go viral"
+          "When nature copied a video game design (yes, really)"
+          "This simple trick powers every phone on the planet"
+          "A coding mistake that became a billion-dollar feature"
+
       DO NOT modify the JSON structure. Keep exactly 5 related queries with the exact types shown.
-      Each related query should be a proper topic with a concise, engaging one-liner context.`;
+      IMPORTANT: Create unique, topic-specific hooks. Don't follow any fixed patterns. Let each hook naturally fit its topic.`;
 
       const userPrompt = `Explain "${query}" for someone aged ${userContext.age} studying for ${userContext.studyingFor}.
       Make it simple and relatable.
@@ -100,63 +114,65 @@ export class GPTService {
       try {
         const parsedContent = JSON.parse(content);
         
-        // Log for debugging
-        console.log('Raw GPT Response:', content);
-        console.log('Parsed GPT Response:', parsedContent);
-
         // Basic structure validation
-        if (!parsedContent?.parts || !Array.isArray(parsedContent.parts)) {
-          console.error('Invalid parts structure:', parsedContent);
-          throw new Error('Parts array is missing or invalid');
+        if (!parsedContent || typeof parsedContent !== 'object') {
+          throw new Error('Response is not a valid JSON object');
         }
 
-        if (!parsedContent?.relatedQueries || !Array.isArray(parsedContent.relatedQueries)) {
-          console.error('Invalid relatedQueries structure:', parsedContent);
-          throw new Error('RelatedQueries array is missing or invalid');
+        if (!Array.isArray(parsedContent.parts) || parsedContent.parts.length === 0) {
+          throw new Error('Parts array is missing or empty');
         }
 
-        // Validate parts content
-        if (parsedContent.parts.length === 0 || 
-            !parsedContent.parts.every(p => typeof p === 'string' && p.trim().length > 0)) {
-          throw new Error('Parts must be non-empty strings');
+        if (!Array.isArray(parsedContent.relatedQueries) || parsedContent.relatedQueries.length !== 5) {
+          throw new Error('RelatedQueries must be an array with exactly 5 items');
+        }
+
+        // Add type annotation for the parameter
+        if (!parsedContent.parts.every((p: unknown) => typeof p === 'string' && p.trim().length > 0)) {
+          throw new Error('All parts must be non-empty strings');
         }
 
         // Validate related queries
         const requiredTypes = ['prerequisite', 'extension', 'application', 'parallel', 'deeper'];
         
-        if (parsedContent.relatedQueries.length !== 5) {
-          throw new Error(`Expected 5 related queries, got ${parsedContent.relatedQueries.length}`);
-        }
-
-        // Validate each query
-        parsedContent.relatedQueries.forEach((query, index) => {
-          if (!query?.query || typeof query.query !== 'string' || query.query.trim().length === 0) {
+        for (const [index, query] of parsedContent.relatedQueries.entries()) {
+          if (!query || typeof query !== 'object') {
+            throw new Error(`Invalid query object at index ${index}`);
+          }
+          
+          if (typeof query.query !== 'string' || query.query.trim().length === 0) {
             throw new Error(`Invalid query string at index ${index}`);
           }
-          if (!query?.type || !requiredTypes.includes(query.type)) {
+          
+          if (!requiredTypes.includes(query.type)) {
             throw new Error(`Invalid query type at index ${index}: ${query.type}`);
           }
-          if (!query?.context || typeof query.context !== 'string' || query.context.trim().length === 0) {
+          
+          if (typeof query.context !== 'string' || query.context.trim().length === 0) {
             throw new Error(`Invalid context at index ${index}`);
           }
-        });
+        }
 
-        // Check for all required types
-        const types = parsedContent.relatedQueries.map(q => q.type);
-        const missingTypes = requiredTypes.filter(type => !types.includes(type));
-        if (missingTypes.length > 0) {
-          throw new Error(`Missing required query types: ${missingTypes.join(', ')}`);
+        // Verify all required types are present exactly once
+        const types = parsedContent.relatedQueries.map((q: { type: string }) => q.type);
+        const uniqueTypes = new Set(types);
+        if (uniqueTypes.size !== requiredTypes.length) {
+          throw new Error('Each query type must appear exactly once');
         }
 
         return parsedContent as ExploreResponse;
-      } catch (parseError) {
-        console.error('Parse Error:', parseError);
-        console.error('Raw Content:', content);
-        throw new Error(`Invalid response format: ${parseError.message}`);
+      } catch (error) {
+        if (error instanceof Error) {
+          throw new Error(`Invalid response format: ${error.message}`);
+        }
+        throw new Error('Invalid response format');
       }
     } catch (error) {
-      console.error('Explore content error:', error);
-      throw error;
+      if (error instanceof Error) {
+        console.error('Explore content error:', error.message);
+        throw error;
+      }
+      throw new Error('Unknown error occurred');
     }
   }
 
