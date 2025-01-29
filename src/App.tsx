@@ -1,85 +1,74 @@
 // src/App.tsx
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout/Layout';
 import { ExploreView } from './components/Explore/ExploreView';
 import { PlaygroundView } from './components/Playground/PlaygroundView';
 import { TestView } from './components/Test/TestView';
-import { Toast } from './components/shared/Toast';
-import { Loading } from './components/shared/Loading';
-import { storageService } from './services/storageService';
+import { PreFillForm } from './components/shared/PreFillForm';
+import { UserContext } from './types';
+import { Toaster, toast } from 'react-hot-toast';
 
-type Mode = 'playground' | 'explore' | 'test';
-
-export const App = () => {
-  const [mode, setMode] = useState<Mode>('playground'); // Default to playground
-  const [isLoading, setIsLoading] = useState(true);
-  const [toast, setToast] = useState<{ type: 'success' | 'error', message: string } | null>(null);
-
-  useEffect(() => {
-    // Check user info and other initializations
-    const init = async () => {
-      const hasUser = storageService.hasUser();
-      if (!hasUser) {
-        // Handle new user setup if needed
-      }
-      setIsLoading(false);
-    };
-    init();
-  }, []);
+function App() {
+  const [userContext, setUserContext] = useState<UserContext | null>(null);
 
   const handleError = (message: string) => {
-    setToast({ type: 'error', message });
+    toast.error(message);
   };
 
   const handleSuccess = (message: string) => {
-    setToast({ type: 'success', message });
+    toast.success(message);
   };
 
-  const handleRelatedQueryClick = (query: string) => {
-    setMode('explore');
-    // The query will be handled by the ExploreView component
-  };
-
-  if (isLoading) {
-    return <Loading fullScreen />;
+  if (!userContext) {
+    return (
+      <div className="min-h-screen bg-background text-white p-4">
+        <PreFillForm onSubmit={(context) => setUserContext(context)} />
+      </div>
+    );
   }
 
   return (
-    <>
-      <Layout 
-        currentMode={mode} 
-        onModeChange={setMode}
-        onRelatedQueryClick={handleRelatedQueryClick}
-      >
-        {mode === 'playground' && (
-          <PlaygroundView
-            onError={handleError}
-            onSuccess={handleSuccess}
-          />
-        )}
-        {mode === 'explore' && (
-          <ExploreView
-            onError={handleError}
-            onSuccess={handleSuccess}
-          />
-        )}
-        {mode === 'test' && (
-          <TestView
-            onError={handleError}
-            onSuccess={handleSuccess}
-          />
-        )}
-      </Layout>
-
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
-    </>
+    <Router>
+      <div className="min-h-screen bg-background text-white">
+        <Toaster position="top-right" />
+        <Layout>
+          <Routes>
+            <Route 
+              path="/" 
+              element={
+                <ExploreView 
+                  onError={handleError}
+                  onSuccess={handleSuccess}
+                  userContext={userContext}
+                />
+              } 
+            />
+            <Route 
+              path="/playground" 
+              element={
+                <PlaygroundView 
+                  onError={handleError}
+                  onSuccess={handleSuccess}
+                  userContext={userContext}
+                />
+              } 
+            />
+            <Route 
+              path="/test" 
+              element={
+                <TestView 
+                  onError={handleError}
+                  onSuccess={handleSuccess}
+                  userContext={userContext}
+                />
+              } 
+            />
+          </Routes>
+        </Layout>
+      </div>
+    </Router>
   );
-};
+}
 
 export default App;

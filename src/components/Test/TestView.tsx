@@ -1,26 +1,33 @@
 // src/components/Test/TestView.tsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { SearchBar } from '../shared/SearchBar';
 import { Loading } from '../shared/Loading';
 import { useApi } from '../../hooks/useApi';
 import { Trophy, Clock, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
-import { UserContext } from '../../contexts/UserContext';
+import { Question, UserContext } from '../../types';
 
 interface TestViewProps {
-  initialQuery?: string;
   onError: (message: string) => void;
   onSuccess: (message: string) => void;
   userContext: UserContext;
 }
 
-export const TestView = ({ initialQuery, onError, onSuccess, userContext }: TestViewProps) => {
+interface IndexedQuestion extends Question {
+  index: number;
+}
+
+export const TestView: React.FC<TestViewProps> = ({
+  onError,
+  onSuccess,
+  userContext
+}) => {
   const { isLoading, generateTest } = useApi();
   const [mode, setMode] = useState<'selection' | 'test' | 'result'>('selection');
   const [examType, setExamType] = useState<'JEE' | 'NEET' | null>(null);
-  const [topic, setTopic] = useState(initialQuery || '');
-  const [questions, setQuestions] = useState<any[]>([]);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<number[]>([]);
+  const [topic, setTopic] = useState('');
+  const [questions, setQuestions] = useState<IndexedQuestion[]>([]);
+  const [currentQuestion, setCurrentQuestion] = useState<IndexedQuestion | null>(null);
+  const [answers, setAnswers] = useState<Record<number, number>>({});
   const [testStarted, setTestStarted] = useState(false);
   const [startTime, setStartTime] = useState<number>(0);
   const [timeSpent, setTimeSpent] = useState('00:00');
@@ -103,16 +110,18 @@ export const TestView = ({ initialQuery, onError, onSuccess, userContext }: Test
 
   const startTest = async () => {
     try {
-      const testQuestions = await generateTest(topic, examType!, userContext);
-      setQuestions(testQuestions);
-      setAnswers(new Array(20).fill(-1));
-      setCurrentQuestion(0);
-      setMode('test');
-      setTimeSpent('00:00'); // Reset timer
-      setTestStarted(false); // Don't start timer yet
-      onSuccess('Test loaded! Timer will start when you view the first question.');
+      const generatedQuestions = await generateTest(topic, examType!);
+      const questionsWithIndex = generatedQuestions.map((q, idx) => ({ 
+        ...q, 
+        index: idx 
+      }));
+      setQuestions(questionsWithIndex);
+      setCurrentQuestion(questionsWithIndex[0]);
+      setAnswers({});
+      setTestStarted(true);
+      setStartTime(Date.now());
     } catch (error) {
-      onError('Failed to generate test questions. Please try again.');
+      onError('Failed to generate test questions');
     }
   };
 
@@ -126,16 +135,15 @@ export const TestView = ({ initialQuery, onError, onSuccess, userContext }: Test
 
   const submitTest = () => {
     let totalMarks = 0;
-    answers.forEach((answer, idx) => {
+    Object.values(answers).forEach((answer) => {
       if (answer === -1) return; // Skip unanswered
-      if (answer === questions[idx].correctAnswer) {
+      if (answer === questions[answer].correctAnswer) {
         totalMarks += 4; // +4 for correct
       } else {
         totalMarks -= 1; // -1 for wrong
       }
     });
 
-    const rankRange = calculateRank(totalMarks, examType!);
     setMode('result');
     onSuccess('Test completed! Check your results.');
   };
@@ -193,12 +201,12 @@ export const TestView = ({ initialQuery, onError, onSuccess, userContext }: Test
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center space-x-4">
             <span className="text-lg font-medium">
-              Question {currentQuestion + 1}/20
+              Question {currentQuestion ? (currentQuestion.index + 1) : ''}/20
             </span>
             <div className="h-2 w-32 bg-gray-700 rounded-full">
               <div 
                 className="h-2 bg-primary rounded-full transition-all duration-300"
-                style={{ width: `${((currentQuestion + 1) / 20) * 100}%` }}
+                style={{ width: `${((currentQuestion ? currentQuestion.index + 1 : 0) / 20) * 100}%` }}
               />
             </div>
           </div>
@@ -213,9 +221,9 @@ export const TestView = ({ initialQuery, onError, onSuccess, userContext }: Test
           {Array(20).fill(0).map((_, idx) => (
             <button
               key={idx}
-              onClick={() => setCurrentQuestion(idx)}
+              onClick={() => setCurrentQuestion(questions[idx])}
               className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 
-                ${idx === currentQuestion
+                ${currentQuestion === questions[idx]
                   ? 'bg-primary text-white scale-110 shadow-lg'
                   : answers[idx] !== -1
                   ? 'bg-green-500/20 text-green-500 hover:bg-green-500/30'
@@ -231,90 +239,57 @@ export const TestView = ({ initialQuery, onError, onSuccess, userContext }: Test
       {/* Question Card */}
       <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
         <h2 className="text-xl font-medium mb-6 leading-relaxed">
-          {questions[currentQuestion]?.text}
+          {currentQuestion?.text}
         </h2>
         
-        <div className="space-y-3">
-          {questions[currentQuestion]?.options.map((option: string, idx: number) => (
+        <div className="flex flex-col space-y-4">
+          {/* Question options */}
+          {currentQuestion?.options.map((option, idx) => (
             <button
               key={idx}
-              onClick={() => {
-                const newAnswers = [...answers];
-                newAnswers[currentQuestion] = idx;
-                setAnswers(newAnswers);
-              }}
-              className={`w-full text-left p-4 rounded-lg transition-all duration-200
-                ${answers[currentQuestion] === idx
-                  ? 'bg-primary/10 border-2 border-primary text-white'
-                  : 'bg-gray-700 border border-gray-600 hover:bg-gray-600'
-                }
-                ${answers[currentQuestion] === idx ? 'shadow-lg scale-[1.02]' : ''}
-              `}
+              onClick={() => handleAnswer(idx)}
+              className={`p-4 rounded-lg ${
+                answers[currentQuestion.index] === idx 
+                  ? 'bg-primary text-white' 
+                  : 'bg-gray-700 hover:bg-gray-600'
+              }`}
             >
-              <div className="flex items-center space-x-4">
-                <span className={`w-8 h-8 flex items-center justify-center rounded-full
-                  ${answers[currentQuestion] === idx
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-600 text-gray-300'
-                  }`}
-                >
-                  {String.fromCharCode(65 + idx)}
-                </span>
-                <span>{option}</span>
-              </div>
+              {option}
             </button>
           ))}
+
+          {/* Navigation buttons */}
+          <div className="flex justify-between mt-4">
+            <button
+              onClick={goToPrevious}
+              disabled={!currentQuestion || currentQuestion.index === 0}
+              className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <button
+              onClick={goToNext}
+              disabled={!currentQuestion || currentQuestion.index === questions.length - 1}
+              className="px-4 py-2 rounded bg-primary hover:bg-primary-dark disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
         </div>
-      </div>
-
-      {/* Navigation Buttons */}
-      <div className="flex justify-between items-center bg-gray-800 p-4 rounded-lg shadow-lg">
-        <button
-          onClick={() => setCurrentQuestion(prev => Math.max(0, prev - 1))}
-          disabled={currentQuestion === 0}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200
-            ${currentQuestion === 0
-              ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-              : 'bg-gray-700 hover:bg-gray-600 text-white'
-            }`}
-        >
-          <ChevronLeft className="w-5 h-5" />
-          <span>Previous</span>
-        </button>
-
-        {currentQuestion === 19 ? (
-          <button
-            onClick={submitTest}
-            className="flex items-center space-x-2 px-6 py-2 bg-primary hover:bg-primary-dark
-              text-white rounded-lg transition-all duration-200"
-          >
-            <span>Submit Test</span>
-            <Trophy className="w-5 h-5" />
-          </button>
-        ) : (
-          <button
-            onClick={() => setCurrentQuestion(prev => Math.min(19, prev + 1))}
-            className="flex items-center space-x-2 px-4 py-2 bg-primary hover:bg-primary-dark
-              text-white rounded-lg transition-all duration-200"
-          >
-            <span>Next</span>
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        )}
       </div>
 
       {/* Answered Questions Count */}
       <div className="text-center text-sm text-gray-400">
-        {answers.filter(a => a !== -1).length} of 20 questions answered
+        {Object.values(answers).filter(a => a !== -1).length} of 20 questions answered
       </div>
     </div>
   );
 
   // Result View
   const renderResultView = () => {
-    const totalMarks = answers.reduce((acc, ans, idx) => {
+    const totalMarks = Object.values(answers).reduce((acc, ans) => {
       if (ans === -1) return acc;
-      return acc + (ans === questions[idx].correctAnswer ? 4 : -1);
+      return acc + (ans === questions[ans].correctAnswer ? 4 : -1);
     }, 0);
 
     return (
@@ -362,8 +337,8 @@ export const TestView = ({ initialQuery, onError, onSuccess, userContext }: Test
         <button
           onClick={() => {
             setMode('selection');
-            setAnswers([]);
-            setCurrentQuestion(0);
+            setAnswers({});
+            setCurrentQuestion(null);
           }}
           className="btn btn-primary w-full"
         >
@@ -371,6 +346,32 @@ export const TestView = ({ initialQuery, onError, onSuccess, userContext }: Test
         </button>
       </div>
     );
+  };
+
+  // Add proper index handling
+  const handleAnswer = (selectedIndex: number) => {
+    if (!currentQuestion) return;
+    setAnswers(prev => ({
+      ...prev,
+      [currentQuestion.index]: selectedIndex
+    }));
+  };
+
+  // Fix navigation with proper index handling
+  const goToNext = () => {
+    if (!currentQuestion) return;
+    const nextIndex = currentQuestion.index + 1;
+    if (nextIndex < questions.length) {
+      setCurrentQuestion(questions[nextIndex]);
+    }
+  };
+
+  const goToPrevious = () => {
+    if (!currentQuestion) return;
+    const prevIndex = currentQuestion.index - 1;
+    if (prevIndex >= 0) {
+      setCurrentQuestion(questions[prevIndex]);
+    }
   };
 
   if (isLoading) {
@@ -398,6 +399,10 @@ export const TestView = ({ initialQuery, onError, onSuccess, userContext }: Test
       {mode === 'selection' && renderSelectionView()}
       {mode === 'test' && renderTestView()}
       {mode === 'result' && renderResultView()}
+
+      <button onClick={submitTest} className="btn btn-primary">
+        Submit Test
+      </button>
     </div>
   );
 };

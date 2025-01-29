@@ -1,4 +1,4 @@
-import React from 'react';
+import type { FC } from 'react';
 import { XCircle } from 'lucide-react';
 
 interface ResultModalProps {
@@ -12,7 +12,7 @@ interface ResultModalProps {
   rankPrediction: number;
 }
 
-export const ResultModal = ({ 
+export const ResultModal: FC<ResultModalProps> = ({ 
   isOpen, 
   onClose, 
   score, 
@@ -21,7 +21,7 @@ export const ResultModal = ({
   averageTime,
   topic,
   rankPrediction 
-}: ResultModalProps) => {
+}) => {
   if (!isOpen) return null;
 
   const getTopicAnalysis = (accuracy: number, averageTime: number) => {

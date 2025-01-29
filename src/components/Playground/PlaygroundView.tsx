@@ -1,9 +1,10 @@
 // src/components/Playground/PlaygroundView.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SearchBar } from '../shared/SearchBar';
 import { Loading } from '../shared/Loading';
 import { useApi } from '../../hooks/useApi';
-import { Trophy, Timer, Target, Award, Pause, Play, Star } from 'lucide-react';
+import { Trophy, Timer, Target, Award, Pause, Play } from 'lucide-react';
+import { Question, UserContext } from '../../types';
 
 interface PlaygroundViewProps {
   initialQuery?: string;
@@ -12,20 +13,41 @@ interface PlaygroundViewProps {
   userContext: UserContext;
 }
 
-export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }: PlaygroundViewProps) => {
+interface Stats {
+  questions: number;
+  accuracy: number;
+  streak: number;
+  bestStreak: number;
+  avgTime: number;
+  level: number;
+  questionsToNextLevel: number;
+}
+
+interface TopicProgress {
+  totalAttempts: number;
+  successRate: number;
+  averageTime: number;
+  lastLevel: number;
+  masteryScore: number;
+}
+
+export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
+  initialQuery,
+  onError,
+  onSuccess,
+  userContext
+}) => {
   const { getQuestion } = useApi();
   const [isInitialLoading, setIsInitialLoading] = useState(false);
   const [query, setQuery] = useState(initialQuery || '');
-  const [currentQuestion, setCurrentQuestion] = useState<any>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [nextQuestionTimer, setNextQuestionTimer] = useState<NodeJS.Timeout | null>(null);
-  const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
+  const [nextQuestionTimer, setNextQuestionTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [currentQuestionTime, setCurrentQuestionTime] = useState<number>(0);
-  const [timerInterval, setTimerInterval] = useState<NodeJS.Timer | null>(null);
+  const [timerInterval, setTimerInterval] = useState<ReturnType<typeof setInterval> | null>(null);
   const [nextQuestionCountdown, setNextQuestionCountdown] = useState<number | null>(null);
-  const [isQueueHealthy, setIsQueueHealthy] = useState(true);
 
   const [sessionStats, setSessionStats] = useState({
     totalQuestions: 0,
@@ -33,9 +55,7 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
     isSessionComplete: false
   });
 
-  const [usedQuestions, setUsedQuestions] = useState(new Set());
-
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<Stats>({
     questions: 0,
     accuracy: 0,
     streak: 0,
@@ -45,30 +65,27 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
     questionsToNextLevel: 5
   });
 
-  // Add new state to track overall topic performance
-  const [topicProgress, setTopicProgress] = useState(() => {
+  const [topicProgress, setTopicProgress] = useState<TopicProgress>(() => {
     const saved = localStorage.getItem(`topic-progress-${query}`);
     return saved ? JSON.parse(saved) : {
       totalAttempts: 0,
       successRate: 0,
       averageTime: 0,
       lastLevel: 1,
-      masteryScore: 0  // 0-100 scale
+      masteryScore: 0
     };
   });
 
-  // Add a state for the next question
-  const [nextQuestion, setNextQuestion] = useState<any>(null);
+  const [nextQuestion, setNextQuestion] = useState<Question | null>(null);
 
-  const startQuestionTimer = () => {
-    setQuestionStartTime(Date.now());
+  const startQuestionTimer = (): void => {
     const interval = setInterval(() => {
       setCurrentQuestionTime(prev => prev + 1);
     }, 1000);
     setTimerInterval(interval);
   };
 
-  const stopQuestionTimer = () => {
+  const stopQuestionTimer = (): void => {
     if (timerInterval) {
       clearInterval(timerInterval);
       setTimerInterval(null);
@@ -77,11 +94,9 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
 
   const resetQuestionTimer = () => {
     setCurrentQuestionTime(0);
-    setQuestionStartTime(null);
     stopQuestionTimer();
   };
 
-  // Add a function to fetch next question in background
   const prefetchNextQuestion = async () => {
     try {
       const adjustedLevel = Math.min(10, Math.max(1, 
@@ -101,7 +116,6 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
     }
   };
 
-  // Modify fetchNewQuestion to use prefetched question
   const fetchNewQuestion = async () => {
     if (!query) return;
     
@@ -113,7 +127,6 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
       return;
     }
 
-    // Use prefetched question if available
     if (nextQuestion) {
       setCurrentQuestion(nextQuestion);
       setNextQuestion(null);
@@ -123,10 +136,8 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
       resetQuestionTimer();
       startQuestionTimer();
       
-      // Start prefetching next question immediately
       prefetchNextQuestion();
     } else {
-      // Fallback to fetching directly if no prefetched question
       try {
         const adjustedLevel = Math.min(10, Math.max(1, 
           stats.level + 
@@ -147,7 +158,6 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
         resetQuestionTimer();
         startQuestionTimer();
         
-        // Start prefetching next question
         prefetchNextQuestion();
       } catch (error) {
         console.error('Error fetching question:', error);
@@ -159,17 +169,14 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
   const handleSearch = async (newQuery: string) => {
     try {
       setIsInitialLoading(true);
-      // Clear question-specific state
       setCurrentQuestion(null);
       setSelectedAnswer(null);
       setShowExplanation(false);
-      setUsedQuestions(new Set());
       
       const isSameTopic = newQuery === query;
       setQuery(newQuery);
       
       if (!isSameTopic) {
-        // Reset everything for new topic
         setTopicProgress({
           totalAttempts: 0,
           successRate: 0,
@@ -187,12 +194,11 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
           questionsToNextLevel: 5
         });
       } else {
-        // Continue with existing progress
         setStats(prev => ({
           ...prev,
-          questions: 0, // Reset session questions
-          streak: 0, // Reset streak
-          level: topicProgress.lastLevel, // Keep previous level
+          questions: 0,
+          streak: 0,
+          level: topicProgress.lastLevel,
           questionsToNextLevel: 5
         }));
       }
@@ -220,63 +226,18 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
     }
   };
 
-  // Add a constant for countdown duration
-  const COUNTDOWN_DURATION = 5; // 5 seconds to give more time for loading
+  const COUNTDOWN_DURATION = 5;
 
-  const updateStats = (isCorrect: boolean) => {
+  const updateStats = (isCorrect: boolean): void => {
     setStats(prev => {
       const newStreak = isCorrect ? prev.streak + 1 : 0;
-      const newQuestions = prev.questions + 1;
-      const newAccuracy = ((prev.accuracy * prev.questions) + (isCorrect ? 100 : 0)) / newQuestions;
-      
-      // Level progression
-      let newLevel = prev.level;
-      let newQuestionsToNextLevel = prev.questionsToNextLevel;
-      
-      if (isCorrect) {
-        newQuestionsToNextLevel--;
-        if (newQuestionsToNextLevel <= 0) {
-          newLevel++;
-          newQuestionsToNextLevel = 5;
-          onSuccess(`Level Up! You're now level ${newLevel} 🎉`);
-        }
-      }
-
-      // Update session progress
-      setSessionStats(prev => {
-        const newTotal = prev.totalQuestions + 1;
-        const isComplete = newTotal >= prev.sessionLimit;
-        
-        if (isComplete) {
-          stopQuestionTimer();
-          if (nextQuestionTimer) clearTimeout(nextQuestionTimer);
-          onSuccess("Congratulations! You've completed your practice session! 🎉");
-        }
-        
-        return {
-          ...prev,
-          totalQuestions: newTotal,
-          isSessionComplete: isComplete
-        };
-      });
-
-      // Streak notifications
-      if (newStreak === 2) {
-        onSuccess('Great streak! Keep going! 🔥');
-      } else if (newStreak === 5) {
-        onSuccess('Unstoppable! 🚀');
-      } else if (newStreak === 10) {
-        onSuccess('Legendary! 🌟');
-      }
-
       return {
         ...prev,
-        questions: newQuestions,
-        accuracy: Number(newAccuracy.toFixed(1)),
+        questions: prev.questions + 1,
+        accuracy: ((prev.accuracy * prev.questions) + (isCorrect ? 100 : 0)) / (prev.questions + 1),
         streak: newStreak,
         bestStreak: Math.max(prev.bestStreak, newStreak),
-        level: newLevel,
-        questionsToNextLevel: newQuestionsToNextLevel
+        avgTime: ((prev.avgTime * prev.questions) + currentQuestionTime) / (prev.questions + 1)
       };
     });
   };
@@ -295,17 +256,15 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
   };
 
   const handleAnswer = async (selectedIndex: number) => {
-    if (selectedAnswer !== null) return;
+    if (selectedAnswer !== null || !currentQuestion) return;
     
     setSelectedAnswer(selectedIndex);
     setShowExplanation(true);
     stopQuestionTimer();
 
-    // Update stats only
     const isCorrect = selectedIndex === currentQuestion.correctAnswer;
     updateStats(isCorrect);
 
-    // Instead of loading immediately, set a timer for the next question
     if (!isPaused) {
       const timer = setTimeout(() => {
         fetchNewQuestion();
@@ -325,24 +284,8 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
     if (initialQuery) {
       handleSearch(initialQuery);
     }
-    
-    // Cleanup on unmount or when initialQuery changes
-    return () => {
-      if (nextQuestionTimer) clearTimeout(nextQuestionTimer);
-      if (timerInterval) clearInterval(timerInterval);
-    };
   }, [initialQuery]);
 
-  // Clean up timer on unmount
-  useEffect(() => {
-    return () => {
-      if (timerInterval) {
-        clearInterval(timerInterval);
-      }
-    };
-  }, [timerInterval]);
-
-  // Update SessionProgress to be LevelProgress
   const LevelProgress = () => (
     <div className="mb-4">
       <div className="flex justify-between text-sm text-gray-400 mb-2">
@@ -359,88 +302,6 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
       </div>
     </div>
   );
-
-  // Add this helper function at the top of the file
-  const formatTime = (time: number): string => {
-    return time.toFixed(1);
-  };
-
-  // Add new component for Progress Ring
-  const ProgressRing = ({ progress, size = 40, strokeWidth = 3 }) => {
-    const radius = (size - strokeWidth) / 2;
-    const circumference = radius * 2 * Math.PI;
-    const strokeDashoffset = circumference - (progress / 100) * circumference;
-
-    return (
-      <div className="relative inline-flex items-center justify-center">
-        <svg width={size} height={size} className="transform -rotate-90">
-          <circle
-            className="text-gray-700"
-            strokeWidth={strokeWidth}
-            stroke="currentColor"
-            fill="transparent"
-            r={radius}
-            cx={size / 2}
-            cy={size / 2}
-          />
-          <circle
-            className="text-primary transition-all duration-300 ease-in-out"
-            strokeWidth={strokeWidth}
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            stroke="currentColor"
-            fill="transparent"
-            r={radius}
-            cx={size / 2}
-            cy={size / 2}
-          />
-        </svg>
-        <span className="absolute text-sm font-medium">{sessionStats.totalQuestions}</span>
-      </div>
-    );
-  };
-
-  // Reset used questions when changing topics
-  useEffect(() => {
-    setUsedQuestions(new Set());
-  }, [query]);
-
-  // Add cleanup effect
-  useEffect(() => {
-    // Cleanup function
-    return () => {
-      setCurrentQuestion(null);
-      setSelectedAnswer(null);
-      setShowExplanation(false);
-      setIsPaused(false);
-      setNextQuestionTimer(null);
-      setQuestionStartTime(null);
-      setCurrentQuestionTime(0);
-      setNextQuestionCountdown(null);
-      setUsedQuestions(new Set());
-      setStats({
-        questions: 0,
-        accuracy: 0,
-        streak: 0,
-        bestStreak: 0,
-        avgTime: 0,
-        level: 1,
-        questionsToNextLevel: 5
-      });
-      
-      // Clear any running timers
-      if (timerInterval) clearInterval(timerInterval);
-      if (nextQuestionTimer) clearTimeout(nextQuestionTimer);
-    };
-  }, []);
-
-  // Start prefetching when current question is displayed
-  useEffect(() => {
-    if (currentQuestion && !nextQuestion) {
-      prefetchNextQuestion();
-    }
-  }, [currentQuestion]);
 
   if (isInitialLoading) {
     return (
@@ -531,7 +392,6 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
         </div>
       ) : (
         <div className="animate-fade-in">
-          {/* Stats Bar */}
           <div className="grid grid-cols-4 gap-4 mb-8">
             <div className="card">
               <div className="flex items-center justify-between">
@@ -568,10 +428,8 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
             </div>
           </div>
 
-          {/* Level Progress */}
           <LevelProgress />
 
-          {/* Question Card */}
           <div className="card space-y-6">
             <div className="flex justify-between items-start">
               <h2 className="text-base font-medium leading-relaxed text-gray-200 
@@ -618,7 +476,6 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
               ))}
             </div>
 
-            {/* Explanation */}
             {showExplanation && (
               <div className={`px-4 py-3 rounded-lg animate-fade-in ${
                 selectedAnswer === currentQuestion.correctAnswer
@@ -627,7 +484,6 @@ export const PlaygroundView = ({ initialQuery, onError, onSuccess, userContext }
               }`}>
                 <p className="text-sm">{currentQuestion.explanation}</p>
                 
-                {/* Simplified Countdown */}
                 {!isPaused && nextQuestionCountdown !== null && (
                   <div className="mt-4 border-t border-gray-700 pt-4">
                     <div className="relative h-1 bg-gray-700 rounded-full overflow-hidden">

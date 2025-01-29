@@ -1,5 +1,4 @@
 // src/components/Home/HomeView.tsx
-import React from 'react';
 import { BookOpen, Target, ClipboardList } from 'lucide-react';
 import { SearchBar } from '../shared/SearchBar';
 

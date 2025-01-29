@@ -3,11 +3,14 @@ import React, { useState, KeyboardEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion'; // You'll need to install framer-motion
 
 interface SearchBarProps {
-  placeholder: string;
+  placeholder?: string;
   onSearch: (query: string) => void;
   centered?: boolean;
   title?: string;
   initialValue?: string;
+  className?: string;
+  suggestions?: Array<{ text: string; icon: string; }>;
+  onSubmit?: (query: string) => void;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({ 
@@ -15,18 +18,14 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   placeholder = "What do you want to learn?",
   centered = false,
   title,
-  initialValue = ''
+  initialValue = '',
+  className,
+  suggestions = []
 }) => {
   const [query, setQuery] = useState(initialValue);
   const [isFocused, setIsFocused] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-
-  const suggestions = [
-    { text: 'Quantum Physics', icon: '⚛️' },
-    { text: 'Machine Learning', icon: '🤖' },
-    { text: 'World History', icon: '🌍' }
-  ];
 
   useEffect(() => {
     // Load recent searches from localStorage
@@ -119,7 +118,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               transition-all duration-300 ease-in-out
               hover:bg-gray-800/90 hover:border-gray-600/50
               ${isFocused ? 'border-primary/50 shadow-lg shadow-primary/10' : ''}
-              transform ${isFocused ? 'scale-[1.02]' : 'scale-100'}`}
+              transform ${isFocused ? 'scale-[1.02]' : 'scale-100'}
+              ${className}`}
           />
         </motion.div>
 
