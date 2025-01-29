@@ -35,6 +35,7 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
   initialQuery,
   onError,
   onSuccess,
+  userContext
 }) => {
   const { getQuestion } = useApi();
   const [isInitialLoading, setIsInitialLoading] = useState(false);
@@ -106,18 +107,8 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
 
   const prefetchNextQuestion = async () => {
     try {
-      const adjustedLevel = Math.min(
-        10,
-        Math.max(
-          1,
-          stats.level +
-            (topicProgress.masteryScore > 80 ? 2 : 0) +
-            (topicProgress.successRate > 70 ? 1 : 0) +
-            (topicProgress.averageTime < 15 ? 1 : 0)
-        )
-      );
-
-      const question = await getQuestion(query, adjustedLevel);
+      const adjustedLevel = Math.min(10, Math.max(1, stats.level));
+      const question = await getQuestion(query, adjustedLevel, userContext);
       setNextQuestion(question);
     } catch (error) {
       console.error("Error prefetching next question:", error);
@@ -136,6 +127,7 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
     }
 
     if (nextQuestion) {
+      console.log('Using prefetched question:', nextQuestion);
       setCurrentQuestion(nextQuestion);
       setNextQuestion(null);
       setSelectedAnswer(null);
@@ -147,18 +139,14 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
       prefetchNextQuestion();
     } else {
       try {
-        const adjustedLevel = Math.min(
-          10,
-          Math.max(
-            1,
-            stats.level +
-              (topicProgress.masteryScore > 80 ? 2 : 0) +
-              (topicProgress.successRate > 70 ? 1 : 0) +
-              (topicProgress.averageTime < 15 ? 1 : 0)
-          )
-        );
-
-        const question = await getQuestion(query, adjustedLevel);
+        const adjustedLevel = Math.min(10, Math.max(1, stats.level));
+        console.log('Fetching question for:', {
+          query,
+          level: adjustedLevel,
+          userContext
+        });
+        const question = await getQuestion(query, adjustedLevel, userContext);
+        console.log('Received question:', question);
         setCurrentQuestion(question);
         setSelectedAnswer(null);
         setShowExplanation(false);
@@ -410,6 +398,12 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
               placeholder="Enter what you want to practice..."
               centered={true}
               title="What do you want to practice?"
+              suggestions={[
+                { text: 'Quantum Physics', icon: '⚛️' },
+                { text: 'Machine Learning', icon: '🤖' },
+                { text: 'World History', icon: '🌍' }
+              ]}
+              className="bg-gray-900/80"
             />
           )}
         </div>
@@ -465,13 +459,13 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
                 className="text-base font-medium leading-relaxed text-gray-200 
                 max-w-3xl whitespace-pre-line tracking-wide"
               >
-                {currentQuestion.text.split(" ").length > 20
+                {currentQuestion?.text && currentQuestion.text.split(" ").length > 20 
                   ? currentQuestion.text.split(".").map((sentence, idx) => (
                       <span key={idx} className="block mb-1">
                         {sentence.trim()}.
                       </span>
                     ))
-                  : currentQuestion.text}
+                  : currentQuestion?.text}
               </h2>
               <button
                 onClick={togglePause}
@@ -486,7 +480,7 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
             </div>
 
             <div className="space-y-2">
-              {currentQuestion.options.map((option: string, idx: number) => (
+              {currentQuestion?.options?.map((option: string, idx: number) => (
                 <button
                   key={idx}
                   onClick={() => handleAnswer(idx)}
