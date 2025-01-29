@@ -203,27 +203,25 @@ const RelatedQueries: React.FC<{
   return (
     <div className="mt-4 sm:mt-6 border-t border-gray-800 pt-4">
       <h3 className="text-xs sm:text-sm font-medium text-gray-400 mb-2 px-2">People Also Asked</h3>
-      <div className="space-y-2">
+      <div className="divide-y divide-gray-800">
         {queries.map((query, index) => (
           <div key={index} className="group">
             <button
               onClick={() => onQueryClick(query.query)}
-              className="w-full text-left hover:bg-gray-800/50 p-1.5 rounded-lg 
-                transition-all duration-200 relative"
+              className="w-full text-left hover:bg-gray-800/50 py-2 px-3 transition-all duration-200 relative"
             >
               <div className="flex items-center gap-2 pr-8">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-                    <span className="text-xs sm:text-sm text-gray-200 group-hover:text-primary 
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-xs text-gray-200 group-hover:text-primary 
                       transition-colors truncate">
                       {query.query}
                     </span>
-                    <span className={`text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full 
-                      whitespace-nowrap ${getTypeColor(query.type)}`}>
+                    <span className={`text-[10px] px-1 py-0.5 rounded-full whitespace-nowrap ${getTypeColor(query.type)}`}>
                       {query.type}
                     </span>
                   </div>
-                  <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 line-clamp-2">
+                  <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-1">
                     {query.context}
                   </p>
                 </div>
@@ -252,13 +250,19 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   const [searchKey, setSearchKey] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const gptService = useMemo(() => new GPTService(), []);
+  const latestMessageRef = useRef<HTMLDivElement>(null);
+  const [isFirstQuery, setIsFirstQuery] = useState(true);
 
-  const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-  };
+  const scrollToLatest = useCallback(() => {
+    if (!isFirstQuery) {
+      setTimeout(() => {
+        latestMessageRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }, 100);
+    }
+  }, [isFirstQuery]);
 
   const handleSearch = useCallback(async (query: string) => {
     try {
@@ -275,20 +279,24 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         currentPartIndex: 0
       }]);
       
-      scrollToTop();
+      if (isFirstQuery) {
+        setIsFirstQuery(false);
+      } else {
+        scrollToLatest();
+      }
+      
       onSuccess('Content loaded successfully');
     } catch (error) {
       console.error('Full error details:', error);
       onError('Failed to load content');
     }
-  }, [gptService, onError, onSuccess, userContext]);
+  }, [gptService, onError, onSuccess, userContext, scrollToLatest, isFirstQuery]);
 
   const handleRelatedQueryClick = useCallback((query: string) => {
     if (onRelatedQueryClick) {
       onRelatedQueryClick(query);
     }
     handleSearch(query);
-    scrollToTop();
   }, [onRelatedQueryClick, handleSearch]);
 
   const handleNextPart = useCallback(() => {
@@ -334,6 +342,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
   useEffect(() => {
     if (initialQuery) {
+      setIsFirstQuery(true);
       handleSearch(initialQuery);
     }
   }, [initialQuery, handleSearch]);
@@ -368,7 +377,11 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           <div className="space-y-4 sm:space-y-6 py-4 sm:py-6 pb-24 md:pb-20">
             <div className="space-y-3 sm:space-y-4" ref={messagesEndRef}>
               {messages.map((message, index) => (
-                <div key={index} className={`message ${message.type} px-3 sm:px-4 md:px-0`}>
+                <div 
+                  key={index} 
+                  className={`message ${message.type} px-3 sm:px-4 md:px-0`}
+                  ref={index === messages.length - 1 ? latestMessageRef : null}
+                >
                   {message.type === 'user' ? (
                     <div className="user-message flex items-start gap-3">
                       <UserAvatar />

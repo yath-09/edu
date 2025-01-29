@@ -38,76 +38,141 @@ export class GPTService {
   }
 
   async getExploreContent(query: string, userContext: UserContext): Promise<ExploreResponse> {
-    const systemPrompt = `You are a social media trend expert who explains topics by connecting them to current viral trends, memes, and pop culture moments. Return a JSON response with:
-    {
-      "parts": [
-        "Part 1 content with social media style explanation",
-        "Part 2 content with different platform style",
-        "Part 3 content with another style",
-        "Part 4 content if needed",
-        "Part 5 content if needed"
-      ],
-      "relatedQueries": [
-        {
-          "query": "related topic 1",
-          "type": "prerequisite",
-          "context": "why this is important to know first"
-        },
-        {
-          "query": "related topic 2",
-          "type": "extension",
-          "context": "explore this to go deeper"
-        },
-        {
-          "query": "related topic 3",
-          "type": "application",
-          "context": "real-world application of this concept"
-        },
-        {
-          "query": "related topic 4",
-          "type": "parallel",
-          "context": "similar concept in different field"
-        },
-        {
-          "query": "related topic 5",
-          "type": "deeper",
-          "context": "advanced aspect of this topic"
-        }
-      ]
-    }`;
-
-    const userPrompt = `Explain "${query}" for someone aged ${userContext.age} using:
-    1. TikTok-style hook and trendy intro
-    2. Instagram carousel-style bullet points
-    3. Twitter/X thread style facts
-    4. YouTube shorts-style quick explanations
-    5. End with viral trend references
-
-    Use current social media trends, memes, and pop culture references.
-    Make it relatable with:
-    - "That one friend who..." examples
-    - "Nobody: / Me:" format
-    - "Real ones know..." references
-    - "Core memory" references
-    - Platform-specific formats
-    - Current viral moments (2024)
-    - Trending shows/movies/games references
-    
-    Include 5 related topics with their relationships (prerequisite/extension/application/parallel/deeper).`;
-
     try {
+      const systemPrompt = `You are a Gen-Z tutor who explains complex topics in the simplest possible way.
+      You MUST return a JSON response with EXACTLY this structure - no additional fields or modifications:
+
+      {
+        "parts": [
+          "string content for introduction and basic concept (at least 150 words)",
+          "string content for main explanation with relatable examples (at least 200 words)",
+          "string content for real-world applications and summary (at least 150 words)"
+        ],
+        "relatedQueries": [
+          {
+            "query": "EXAMPLE: If main topic is 'Quantum Physics', then write 'Wave-Particle Duality'",
+            "type": "prerequisite",
+            "context": "EXAMPLE: 'POV: You just found out everything you touch is actually 99.9% empty space 🤯'"
+          },
+          {
+            "query": "EXAMPLE: If topic is 'Python Programming', then write 'Object-Oriented Programming'",
+            "type": "extension",
+            "context": "EXAMPLE: 'The coding secret that made Minecraft possible... and why it's breaking the internet'"
+          },
+          {
+            "query": "EXAMPLE: If topic is 'Chemical Bonding', then write 'Drug Design Chemistry'",
+            "type": "application",
+            "context": "EXAMPLE: 'They said this molecule was impossible to make... until this happened'"
+          },
+          {
+            "query": "EXAMPLE: If topic is 'Natural Selection', then write 'AI Evolution'",
+            "type": "parallel",
+            "context": "EXAMPLE: 'Wait till you see how AI is literally copying nature's 4-billion-year cheat code'"
+          },
+          {
+            "query": "EXAMPLE: If topic is 'Gravity', then write 'Black Holes'",
+            "type": "deeper",
+            "context": "EXAMPLE: 'The universe's biggest mystery that even Einstein couldn't solve... until now'"
+          }
+        ]
+      }
+
+      Content guidelines:
+      - Each main content part should be detailed and comprehensive (minimum 150-200 words each)
+      - For related queries:
+        * 'query' must be an ACTUAL TOPIC NAME, not a description
+        * 'context' must be a viral-style hook that creates suspense or curiosity
+        * Keep contexts short and punchy (10-15 words)
+        * Make each hook unique and topic-specific:
+          - Create unexpected connections to daily life
+          - Use current trends and viral content styles
+          - Make surprising revelations about the topic
+          - Connect to things people already know
+          - Challenge common assumptions
+          - Reveal hidden aspects of the topic
+          - Use humor and unexpected comparisons
+          - Create "wait, what?" moments
+          - Make complex ideas sound intriguing
+          - Use conversational, Gen-Z style language
+
+        * Examples of good hooks (for inspiration only, create your own):
+          "Your favorite game mechanic was actually invented by accident"
+          "The math equation that predicted TikTok would go viral"
+          "When nature copied a video game design (yes, really)"
+          "This simple trick powers every phone on the planet"
+          "A coding mistake that became a billion-dollar feature"
+
+      DO NOT modify the JSON structure. Keep exactly 5 related queries with the exact types shown.
+      IMPORTANT: Create unique, topic-specific hooks. Don't follow any fixed patterns. Let each hook naturally fit its topic.`;
+
+      const userPrompt = `Explain "${query}" for someone aged ${userContext.age} studying for ${userContext.studyingFor}.
+      Make it simple and relatable.
+      Return the response in the exact JSON format specified.`;
+
       const content = await this.makeRequest(systemPrompt, userPrompt);
-      const response = JSON.parse(content);
       
-      if (!Array.isArray(response.parts) || !Array.isArray(response.relatedQueries)) {
-        console.error('Invalid explore response format:', response);
+      try {
+        const parsedContent = JSON.parse(content);
+        
+        // Basic structure validation
+        if (!parsedContent || typeof parsedContent !== 'object') {
+          throw new Error('Response is not a valid JSON object');
+        }
+
+        if (!Array.isArray(parsedContent.parts) || parsedContent.parts.length === 0) {
+          throw new Error('Parts array is missing or empty');
+        }
+
+        if (!Array.isArray(parsedContent.relatedQueries) || parsedContent.relatedQueries.length !== 5) {
+          throw new Error('RelatedQueries must be an array with exactly 5 items');
+        }
+
+        // Add type annotation for the parameter
+        if (!parsedContent.parts.every((p: unknown) => typeof p === 'string' && p.trim().length > 0)) {
+          throw new Error('All parts must be non-empty strings');
+        }
+
+        // Validate related queries
+        const requiredTypes = ['prerequisite', 'extension', 'application', 'parallel', 'deeper'];
+        
+        for (const [index, query] of parsedContent.relatedQueries.entries()) {
+          if (!query || typeof query !== 'object') {
+            throw new Error(`Invalid query object at index ${index}`);
+          }
+          
+          if (typeof query.query !== 'string' || query.query.trim().length === 0) {
+            throw new Error(`Invalid query string at index ${index}`);
+          }
+          
+          if (!requiredTypes.includes(query.type)) {
+            throw new Error(`Invalid query type at index ${index}: ${query.type}`);
+          }
+          
+          if (typeof query.context !== 'string' || query.context.trim().length === 0) {
+            throw new Error(`Invalid context at index ${index}`);
+          }
+        }
+
+        // Verify all required types are present exactly once
+        const types = parsedContent.relatedQueries.map((q: { type: string }) => q.type);
+        const uniqueTypes = new Set(types);
+        if (uniqueTypes.size !== requiredTypes.length) {
+          throw new Error('Each query type must appear exactly once');
+        }
+
+        return parsedContent as ExploreResponse;
+      } catch (error) {
+        if (error instanceof Error) {
+          throw new Error(`Invalid response format: ${error.message}`);
+        }
         throw new Error('Invalid response format');
       }
-      
-      return response;
     } catch (error) {
-      console.error('Explore content error:', error);
-      throw error;
+      if (error instanceof Error) {
+        console.error('Explore content error:', error.message);
+        throw error;
+      }
+      throw new Error('Unknown error occurred');
     }
   }
 
