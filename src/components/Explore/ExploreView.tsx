@@ -103,53 +103,68 @@ const MarkdownComponents: Record<string, React.FC<MarkdownComponentProps>> = {
   ),
 };
 
-const Navigation: React.FC<NavigationMobileProps> = ({ 
+const Navigation: React.FC<NavigationProps> = ({ 
   onPrevious, 
   onNext, 
   currentIndex, 
-  totalParts,
-  isOpen,
-  onToggle 
+  totalParts 
 }) => (
-  <div className="relative mt-4 mb-2">
-    {/* Mobile Toggle Button */}
-    <button
-      onClick={onToggle}
-      className="md:hidden w-full flex items-center justify-center gap-2 text-xs text-gray-400 
-        hover:text-primary transition-colors py-2"
-    >
-      <span>Part {currentIndex + 1} of {totalParts}</span>
-      <svg
-        className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-      </svg>
-    </button>
-
-    {/* Navigation Controls */}
-    <div className={`
-      md:flex flex-col items-center gap-2
-      ${isOpen ? 'flex' : 'hidden'}
-    `}>
-      <div className="flex items-center gap-2 sm:gap-3 w-full justify-center">
+  <div className="mt-4 mb-2">
+    {/* Mobile Navigation - Always visible on mobile */}
+    <div className="md:hidden flex flex-col items-center gap-2">
+      <div className="flex items-center justify-between w-full px-4">
         <button
           onClick={onPrevious}
           disabled={currentIndex === 0}
-          className="text-xs sm:text-sm text-gray-400 hover:text-primary disabled:opacity-50 
+          className="text-sm text-gray-400 hover:text-primary disabled:opacity-50 
+            disabled:cursor-not-allowed transition-colors"
+        >
+          ← Previous
+        </button>
+        <span className="text-xs text-gray-500">
+          Part {currentIndex + 1} of {totalParts}
+        </span>
+        <button
+          onClick={onNext}
+          disabled={currentIndex === totalParts - 1}
+          className="text-sm text-gray-400 hover:text-primary disabled:opacity-50 
+            disabled:cursor-not-allowed transition-colors"
+        >
+          Next →
+        </button>
+      </div>
+      <div className="flex items-center gap-1">
+        {Array.from({ length: totalParts }).map((_, idx) => (
+          <div
+            key={idx}
+            className={`w-1 h-1 rounded-full transition-all duration-300 ${
+              idx === currentIndex 
+                ? 'bg-primary w-2' 
+                : 'bg-gray-600'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+
+    {/* Desktop Navigation - Original design */}
+    <div className="hidden md:flex flex-col items-center gap-2">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onPrevious}
+          disabled={currentIndex === 0}
+          className="text-sm text-gray-400 hover:text-primary disabled:opacity-50 
             disabled:cursor-not-allowed transition-colors px-2"
         >
           ← Previous
         </button>
-        <div className="flex items-center gap-1 sm:gap-1.5">
+        <div className="flex items-center gap-1.5">
           {Array.from({ length: totalParts }).map((_, idx) => (
             <div
               key={idx}
-              className={`w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full transition-all duration-300 ${
+              className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
                 idx === currentIndex 
-                  ? 'bg-primary w-2 sm:w-3' 
+                  ? 'bg-primary w-3' 
                   : 'bg-gray-600'
               }`}
             />
@@ -158,12 +173,15 @@ const Navigation: React.FC<NavigationMobileProps> = ({
         <button
           onClick={onNext}
           disabled={currentIndex === totalParts - 1}
-          className="text-xs sm:text-sm text-gray-400 hover:text-primary disabled:opacity-50 
+          className="text-sm text-gray-400 hover:text-primary disabled:opacity-50 
             disabled:cursor-not-allowed transition-colors px-2"
         >
           Next →
         </button>
       </div>
+      <span className="text-xs text-gray-500">
+        Part {currentIndex + 1} of {totalParts}
+      </span>
     </div>
   </div>
 );
@@ -352,56 +370,57 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           </div>
         </div>
       ) : (
-        <div className="space-y-4 sm:space-y-6 py-4 sm:py-6">
-          <div className="space-y-3 sm:space-y-4" ref={messagesEndRef}>
-            {messages.map((message, index) => (
-              <div key={index} className={`message ${message.type} px-2 sm:px-0`}>
-                {message.type === 'user' ? (
-                  <div className="user-message flex items-start gap-3">
-                    <UserAvatar />
-                    <div className="flex-1">{message.content}</div>
-                  </div>
-                ) : (
-                  <div className="ai-message flex items-start gap-3">
-                    <ProfessorAvatar />
-                    <div className="flex-1">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm, remarkMath]}
-                        rehypePlugins={[rehypeKatex]}
-                        components={MarkdownComponents}
-                      >
-                        {message.parts && message.currentPartIndex !== undefined
-                          ? String(message.parts[message.currentPartIndex])
-                          : typeof message.content === 'object'
-                            ? JSON.stringify(message.content)
-                            : message.content || ''}
-                      </ReactMarkdown>
-
-                      {message.parts && message.parts.length > 1 && (
-                        <Navigation
-                          onPrevious={handlePreviousPart}
-                          onNext={handleNextPart}
-                          currentIndex={message.currentPartIndex || 0}
-                          totalParts={message.parts.length}
-                          isOpen={isNavigationOpen}
-                          onToggle={() => setIsNavigationOpen(!isNavigationOpen)}
-                        />
-                      )}
-
-                      {message.relatedQueries && message.relatedQueries.length > 0 && (
-                        <RelatedQueries
-                          queries={message.relatedQueries}
-                          onQueryClick={handleRelatedQueryClick}
-                        />
-                      )}
+        <div className="relative flex flex-col min-h-screen">
+          <div className="space-y-4 sm:space-y-6 py-4 sm:py-6 pb-24 md:pb-20">
+            <div className="space-y-3 sm:space-y-4" ref={messagesEndRef}>
+              {messages.map((message, index) => (
+                <div key={index} className={`message ${message.type} px-2 sm:px-0`}>
+                  {message.type === 'user' ? (
+                    <div className="user-message flex items-start gap-3">
+                      <UserAvatar />
+                      <div className="flex-1">{message.content}</div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  ) : (
+                    <div className="ai-message flex items-start gap-3">
+                      <ProfessorAvatar />
+                      <div className="flex-1">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm, remarkMath]}
+                          rehypePlugins={[rehypeKatex]}
+                          components={MarkdownComponents}
+                        >
+                          {message.parts && message.currentPartIndex !== undefined
+                            ? String(message.parts[message.currentPartIndex])
+                            : typeof message.content === 'object'
+                              ? JSON.stringify(message.content)
+                              : message.content || ''}
+                        </ReactMarkdown>
+
+                        {message.parts && message.parts.length > 1 && (
+                          <Navigation
+                            onPrevious={handlePreviousPart}
+                            onNext={handleNextPart}
+                            currentIndex={message.currentPartIndex || 0}
+                            totalParts={message.parts.length}
+                          />
+                        )}
+
+                        {message.relatedQueries && message.relatedQueries.length > 0 && (
+                          <RelatedQueries
+                            queries={message.relatedQueries}
+                            onQueryClick={handleRelatedQueryClick}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="sticky bottom-4 sm:bottom-6 mt-6 sm:mt-8 px-2 sm:px-0">
+          <div className="fixed md:sticky bottom-0 left-0 right-0 md:bottom-4 p-2 md:px-0 
+            bg-gradient-to-t from-background via-background to-transparent pb-4 pt-6">
             <SearchBar 
               key={`follow-up-${searchKey}`}
               onSearch={handleSearch} 
