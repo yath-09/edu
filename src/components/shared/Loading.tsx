@@ -1,16 +1,13 @@
-// src/components/shared/Loading.tsx
-import React from 'react';
-
 interface LoadingProps {
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   fullScreen?: boolean;
 }
 
-export const Loading = ({ size = 'md', fullScreen = false }: LoadingProps) => {
+export const Loading = ({ size = "md", fullScreen = false }: LoadingProps) => {
   const sizeClasses = {
-    sm: 'w-5 h-5',
-    md: 'w-8 h-8',
-    lg: 'w-12 h-12'
+    sm: "w-5 h-5",
+    md: "w-8 h-8",
+    lg: "w-12 h-12",
   };
 
   const spinner = (

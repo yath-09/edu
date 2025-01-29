@@ -1,3 +1,4 @@
+
 export interface UserContext {
   age: number;
   location?: string;
@@ -46,7 +47,7 @@ export interface SearchBarProps {
     text: string;
     icon: string;
   }>;
-  buttonText?: string;
+  buttonText?: string; 
   initialValue?: string;
   onSubmit?: (query: string) => void;
 }

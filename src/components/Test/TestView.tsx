@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { SearchBar } from '../shared/SearchBar';
 import { Loading } from '../shared/Loading';
 import { useApi } from '../../hooks/useApi';
-import { Trophy, Clock, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trophy, Clock, AlertCircle } from 'lucide-react';
 import { Question, UserContext } from '../../types';
 
 interface TestViewProps {
@@ -19,7 +19,6 @@ interface IndexedQuestion extends Question {
 export const TestView: React.FC<TestViewProps> = ({
   onError,
   onSuccess,
-  userContext
 }) => {
   const { isLoading, generateTest } = useApi();
   const [mode, setMode] = useState<'selection' | 'test' | 'result'>('selection');
@@ -121,6 +120,7 @@ export const TestView: React.FC<TestViewProps> = ({
       setTestStarted(true);
       setStartTime(Date.now());
     } catch (error) {
+       console.log(error)
       onError('Failed to generate test questions');
     }
   };
