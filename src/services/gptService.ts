@@ -111,18 +111,20 @@ export class GPTService {
     }
   }
 
-  async getPlaygroundQuestion(topic: string, level: number): Promise<Question> {
-    const systemPrompt = `You are an expert educator who creates engaging questions. Return a JSON object with the following structure:
-    {
-      "text": "question text",
-      "options": ["option1", "option2", "option3", "option4"],
-      "correctAnswer": 0,
-      "explanation": "explanation text",
-      "difficulty": 5,
-      "topic": "topic name",
-      "subtopic": "subtopic name",
-      "ageGroup": "age group"
-    }`;
+  async getPlaygroundQuestion(topic: string, level: number, userContext: UserContext): Promise<Question> {
+    const systemPrompt = `You are an expert educator who creates engaging questions. 
+      Create questions suitable for a ${userContext.age} year old student studying for ${userContext.studyingFor}.
+      Return a JSON object with the following structure:
+      {
+        "text": "question text",
+        "options": ["option1", "option2", "option3", "option4"],
+        "correctAnswer": 0,
+        "explanation": "explanation text",
+        "difficulty": 5,
+        "topic": "topic name",
+        "subtopic": "subtopic name",
+        "ageGroup": "age group"
+      }`;
     
     const userPrompt = `Create a multiple choice question about "${topic}" at difficulty level ${level}/10.`;
 
