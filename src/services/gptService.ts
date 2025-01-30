@@ -177,29 +177,89 @@ export class GPTService {
   }
 
   async getPlaygroundQuestion(topic: string, level: number, userContext: UserContext): Promise<Question> {
-    const systemPrompt = `You are an expert educator who creates engaging questions. 
-      Create questions suitable for a ${userContext.age} year old student studying for ${userContext.studyingFor}.
-      Return a JSON object with the following structure:
+    const systemPrompt = `You are an expert educator creating challenging, thought-provoking questions.
+      Target audience: ${userContext.age} year old
+      Current difficulty level: ${level}/10
+
+      QUESTION GUIDELINES:
+      1. Difficulty Scaling (make it genuinely challenging):
+         - Level 1-3: Beyond basic recall - test understanding and connections
+         - Level 4-6: Complex applications and multi-step problem solving
+         - Level 7-8: Advanced analysis and concept integration
+         - Level 9-10: Expert-level synthesis and evaluation
+         
+      2. Question Styles (use a different one each time):
+         - Scenario Analysis: "In a situation where..."
+         - System Thinking: "How would X affect Y and Z..."
+         - Reverse Engineering: "What could cause..."
+         - Comparative Analysis: "Which difference between X and Y explains..."
+         - Predictive Reasoning: "What would happen if..."
+         - Problem Transformation: "How could you modify..."
+         - Edge Cases: "What makes this case unique..."
+         - Counter-Intuitive: "Despite common belief..."
+         - Integration Challenges: "Combining concepts X and Y..."
+         - Application Innovation: "Design a solution using..."
+
+      3. Cognitive Challenge Level (${userContext.age} years):
+         - Push slightly above typical age level
+         - Challenge preconceptions
+         - Require critical thinking
+         - Encourage lateral thinking
+         - Test concept application in novel ways
+         - Add complexity through relationships
+         - Include subtle distinctions
+         - Require multi-step reasoning
+
+      4. Question Complexity Factors:
+         - Combine multiple concepts
+         - Include relevant constraints
+         - Add conditional elements
+         - Require prioritization
+         - Include edge cases
+         - Challenge common assumptions
+         - Test deeper understanding
+         - Require analytical thinking
+
+      Return a JSON object with EXACTLY this structure:
       {
-        "text": "question text",
-        "options": ["option1", "option2", "option3", "option4"],
+        "text": "question text (make it sophisticated and thought-provoking)",
+        "options": [
+          "correct answer (require true understanding)",
+          "tricky wrong answer (almost correct but fundamentally flawed)",
+          "plausible wrong answer (common misconception)",
+          "plausible wrong answer (logical but incorrect approach)"
+        ],
         "correctAnswer": 0,
-        "explanation": "explanation text",
-        "difficulty": 5,
-        "topic": "topic name",
-        "subtopic": "subtopic name",
-        "ageGroup": "age group"
-      }`;
-    
-    const userPrompt = `Create a multiple choice question about "${topic}" at difficulty level ${level}/10.`;
+        "explanation": "detailed explanation of the underlying concepts and why each option is correct/incorrect",
+        "difficulty": ${level},
+        "topic": "${topic}",
+        "subtopic": "specific aspect being tested",
+        "questionType": "style used from the list above",
+        "ageGroup": "${userContext.age} years"
+      }
+
+      IMPORTANT:
+      - Make questions MORE challenging than typical for this age
+      - Never repeat question patterns or approaches
+      - Create questions that require real thinking, not just recall
+      - Make wrong options sophisticated and thoughtfully wrong
+      - Ensure questions test deep understanding
+      - Challenge but don't frustrate
+      - Focus on analytical and critical thinking
+      - Make each question distinctly different from others`;
+
+    const userPrompt = `Create a sophisticated, challenging question about "${topic}" that:
+      1. Pushes beyond the typical difficulty for ${userContext.age} years
+      2. Uses a unique approach not used in previous questions
+      3. Requires deep understanding and critical thinking
+      4. Tests concept application in novel ways
+      5. Challenges common assumptions about the topic`;
 
     try {
       const content = await this.makeRequest(systemPrompt, userPrompt);
       const parsedContent = JSON.parse(content);
       
-      // Validate the response structure
-      if (!parsedContent.text || !Array.isArray(parsedContent.options)) {
-        console.error('Invalid question format:', parsedContent);
+      if (!this.validateQuestionFormat(parsedContent)) {
         throw new Error('Invalid question format received');
       }
       
@@ -208,6 +268,23 @@ export class GPTService {
       console.error('Question generation error:', error);
       throw error;
     }
+  }
+
+  private validateQuestionFormat(question: any): boolean {
+    return (
+      question.text &&
+      Array.isArray(question.options) &&
+      question.options.length === 4 &&
+      typeof question.correctAnswer === 'number' &&
+      question.correctAnswer >= 0 &&
+      question.correctAnswer < 4 &&
+      question.explanation &&
+      question.difficulty &&
+      question.topic &&
+      question.subtopic &&
+      question.questionType &&
+      question.ageGroup
+    );
   }
 
   async getTestQuestions(topic: string, examType: 'JEE' | 'NEET'): Promise<Question[]> {
