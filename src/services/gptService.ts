@@ -182,78 +182,84 @@ export class GPTService {
       Current difficulty level: ${level}/10
 
       QUESTION GUIDELINES:
-      1. Difficulty Scaling (make it genuinely challenging):
-         - Level 1-3: Beyond basic recall - test understanding and connections
-         - Level 4-6: Complex applications and multi-step problem solving
-         - Level 7-8: Advanced analysis and concept integration
-         - Level 9-10: Expert-level synthesis and evaluation
-         
-      2. Question Styles (use a different one each time):
-         - Scenario Analysis: "In a situation where..."
-         - System Thinking: "How would X affect Y and Z..."
-         - Reverse Engineering: "What could cause..."
-         - Comparative Analysis: "Which difference between X and Y explains..."
-         - Predictive Reasoning: "What would happen if..."
-         - Problem Transformation: "How could you modify..."
-         - Edge Cases: "What makes this case unique..."
-         - Counter-Intuitive: "Despite common belief..."
-         - Integration Challenges: "Combining concepts X and Y..."
-         - Application Innovation: "Design a solution using..."
+      1. Question Opening Styles (use a different one each time):
+         - Direct Scenario: "In a lab..."
+         - Observation: "A student noticed..."
+         - Problem: "While testing..."
+         - Real-world: "At a construction site..."
+         - Discovery: "Recent findings show..."
+         - Comparison: "Two systems..."
+         - Hypothetical: "Suppose..."
+         - Data: "Given these values..."
+         - Design: "An engineer needs..."
+         - Research: "Scientists found..."
+         - Application: "In industry..."
+         - Process: "During production..."
+         - Case: "A project team..."
+         - Innovation: "New research..."
+         - Nature: "In nature..."
 
-      3. Cognitive Challenge Level (${userContext.age} years):
-         - Push slightly above typical age level
-         - Challenge preconceptions
-         - Require critical thinking
-         - Encourage lateral thinking
-         - Test concept application in novel ways
-         - Add complexity through relationships
-         - Include subtle distinctions
-         - Require multi-step reasoning
+      2. Question Format:
+         - Keep questions short (25-40 words max)
+         - One clear scenario or context
+         - Single main concept being tested
+         - Direct and focused approach
+         - Clear problem statement
+         - No unnecessary details
+         - Avoid long setups
+         - Get to the point quickly
 
-      4. Question Complexity Factors:
-         - Combine multiple concepts
-         - Include relevant constraints
-         - Add conditional elements
-         - Require prioritization
-         - Include edge cases
-         - Challenge common assumptions
-         - Test deeper understanding
-         - Require analytical thinking
+      3. Cognitive Challenge (${userContext.age} years):
+         - Test understanding, not reading comprehension
+         - Focus on key concepts
+         - Clear but challenging
+         - Precise language
+         - No complex wording
+         - Straightforward scenarios
+         - Essential details only
+
+      4. Structure:
+         - Brief unique opening
+         - Quick context setup
+         - Clear question prompt
+         - Concise options
+         - Direct challenge
+         - No fluff or filler
 
       Return a JSON object with EXACTLY this structure:
       {
-        "text": "question text (make it sophisticated and thought-provoking)",
+        "text": "brief, focused question (25-40 words max)",
         "options": [
-          "correct answer (require true understanding)",
-          "tricky wrong answer (almost correct but fundamentally flawed)",
-          "plausible wrong answer (common misconception)",
-          "plausible wrong answer (logical but incorrect approach)"
+          "clear correct answer",
+          "plausible wrong answer",
+          "plausible wrong answer",
+          "plausible wrong answer"
         ],
         "correctAnswer": 0,
-        "explanation": "detailed explanation of the underlying concepts and why each option is correct/incorrect",
+        "explanation": "concise explanation of correct answer and why others are wrong",
         "difficulty": ${level},
         "topic": "${topic}",
-        "subtopic": "specific aspect being tested",
-        "questionType": "style used from the list above",
+        "subtopic": "specific aspect tested",
+        "questionType": "opening style used",
         "ageGroup": "${userContext.age} years"
       }
 
       IMPORTANT:
-      - Make questions MORE challenging than typical for this age
-      - Never repeat question patterns or approaches
-      - Create questions that require real thinking, not just recall
-      - Make wrong options sophisticated and thoughtfully wrong
-      - Ensure questions test deep understanding
-      - Challenge but don't frustrate
-      - Focus on analytical and critical thinking
-      - Make each question distinctly different from others`;
+      - Keep questions brief and focused
+      - No long-winded scenarios
+      - Get to the point quickly
+      - Use clear, direct language
+      - Avoid unnecessary context
+      - Make each question distinct
+      - Maintain high challenge level
+      - Focus on understanding, not reading`;
 
-    const userPrompt = `Create a sophisticated, challenging question about "${topic}" that:
-      1. Pushes beyond the typical difficulty for ${userContext.age} years
-      2. Uses a unique approach not used in previous questions
-      3. Requires deep understanding and critical thinking
-      4. Tests concept application in novel ways
-      5. Challenges common assumptions about the topic`;
+    const userPrompt = `Create a concise, challenging question about "${topic}" that:
+      1. Uses minimal words (25-40 max)
+      2. Gets straight to the point
+      3. Tests deep understanding
+      4. Avoids unnecessary setup
+      5. Remains clear and focused`;
 
     try {
       const content = await this.makeRequest(systemPrompt, userPrompt);
