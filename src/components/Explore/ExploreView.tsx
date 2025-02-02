@@ -48,22 +48,23 @@ const UserAvatar = () => (
 
 const MarkdownComponents: Record<string, React.FC<MarkdownComponentProps>> = {
   h1: ({ children, ...props }) => (
-    <h1 className="text-xl sm:text-2xl font-bold text-gray-100 mt-6 mb-4" {...props}>
+    <h1 className="text-xl sm:text-2xl font-bold text-gray-100 mt-4 mb-2" {...props}>
       {children}
     </h1>
   ),
   h2: ({ children, ...props }) => (
-    <h2 className="text-lg sm:text-xl font-semibold text-gray-100 mt-5 mb-3" {...props}>
+    <h2 className="text-lg sm:text-xl font-semibold text-gray-100 mt-3 mb-2" {...props}>
       {children}
     </h2>
   ),
   h3: ({ children, ...props }) => (
-    <h3 className="text-base sm:text-lg font-medium text-gray-200 mt-4 mb-2" {...props}>
+    <h3 className="text-base sm:text-lg font-medium text-gray-200 mt-2 mb-1" {...props}>
       {children}
     </h3>
   ),
   p: ({ children, ...props }) => (
-    <p className="text-sm sm:text-base text-gray-300 my-2 leading-relaxed" {...props}>
+    <p className="text-sm sm:text-base text-gray-300 my-1.5 leading-relaxed 
+      break-words" {...props}>
       {children}
     </p>
   ),
@@ -106,47 +107,52 @@ export const RelatedQueries: React.FC<{
 }> = ({ queries, onQueryClick }) => {
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'prerequisite': return 'bg-blue-500/20 text-blue-400';
-      case 'extension': return 'bg-green-500/20 text-green-400';
-      case 'application': return 'bg-yellow-500/20 text-yellow-400';
-      case 'parallel': return 'bg-purple-500/20 text-purple-400';
-      case 'deeper': return 'bg-red-500/20 text-red-400';
+      case 'curiosity': return 'bg-blue-500/20 text-blue-400';
+      case 'mechanism': return 'bg-green-500/20 text-green-400';
+      case 'causality': return 'bg-yellow-500/20 text-yellow-400';
+      case 'innovation': return 'bg-purple-500/20 text-purple-400';
+      case 'insight': return 'bg-red-500/20 text-red-400';
       default: return 'bg-gray-500/20 text-gray-400';
     }
   };
 
   return (
-    <div className="mt-4 sm:mt-6 border-t border-gray-800 pt-4">
-      <h3 className="text-xs sm:text-sm font-medium text-gray-400 mb-2 px-2">People Also Asked</h3>
-      <div className="divide-y divide-gray-800">
+    <div className="mt-6 pt-4">
+      <h3 className="text-sm font-medium text-gray-300 mb-3 px-2">
+        Follow-up Questions
+      </h3>
+      <div className="rounded-lg bg-gray-800/50 divide-y divide-gray-700/50">
         {queries.map((query, index) => (
-          <div key={index} className="group">
-            <button
-              onClick={() => onQueryClick(query.query)}
-              className="w-full text-left hover:bg-gray-800/50 py-2 px-3 transition-all duration-200 relative"
-            >
-              <div className="flex items-center gap-2 pr-8">
+          <button
+            key={index}
+            onClick={() => onQueryClick(query.query)}
+            className="w-full text-left hover:bg-gray-700/30 transition-all 
+              duration-200 group first:rounded-t-lg last:rounded-b-lg"
+          >
+            <div className="py-3 px-4">
+              <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <span className="text-xs text-gray-200 group-hover:text-primary 
-                      transition-colors truncate">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm text-gray-200 group-hover:text-primary 
+                      transition-colors line-clamp-2">
                       {query.query}
                     </span>
-                    <span className={`text-[10px] px-1 py-0.5 rounded-full whitespace-nowrap ${getTypeColor(query.type)}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full 
+                      font-medium ${getTypeColor(query.type)}`}>
                       {query.type}
                     </span>
                   </div>
-                  <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-1">
+                  <p className="text-xs text-gray-400 line-clamp-1">
                     {query.context}
                   </p>
                 </div>
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 
-                  text-gray-500 group-hover:text-primary transition-colors">
-                  +
+                <span className="text-gray-400 group-hover:text-primary 
+                  transition-colors text-lg">
+                  →
                 </span>
               </div>
-            </button>
-          </div>
+            </div>
+          </button>
         ))}
       </div>
     </div>
@@ -274,68 +280,74 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           </div>
         </div>
       ) : (
-        <div className="relative flex flex-col">
-          <div className="space-y-4 pb-32">
+        <div className="relative flex flex-col w-full">
+          <div className="space-y-2 pb-16">
             {messages.map((message, index) => (
               <div 
                 key={index} 
-                className="px-4 sm:px-0 mx-auto max-w-3xl"
+                className="px-2 sm:px-4 w-full mx-auto"
               >
-                <div className="flex items-start gap-3">
-                  {message.type === 'user' ? (
-                    <div className="user-message flex items-start gap-3">
-                      <UserAvatar />
-                      <div className="flex-1 text-sm sm:text-base">{message.content}</div>
-                    </div>
-                  ) : (
-                    <div className="ai-message flex items-start gap-3">
-                      <ProfessorAvatar />
-                      <div className="flex-1">
-                        {isLoading && !message.content ? (
-                          <LoadingAnimation />
-                        ) : (
-                          <>
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm, remarkMath]}
-                              rehypePlugins={[rehypeKatex]}
-                              components={MarkdownComponents}
-                              className="whitespace-pre-wrap"
-                            >
-                              {message.content || ''}
-                            </ReactMarkdown>
-
-                            {message.relatedTopics && message.relatedTopics.length > 0 && (
-                              <RelatedTopics
-                                topics={message.relatedTopics}
-                                onTopicClick={handleRelatedQueryClick}
-                              />
-                            )}
-
-                            {message.relatedQuestions && message.relatedQuestions.length > 0 && (
-                              <RelatedQuestions
-                                questions={message.relatedQuestions}
-                                onQuestionClick={handleRelatedQueryClick}
-                              />
-                            )}
-                          </>
-                        )}
+                <div className="max-w-3xl mx-auto w-full">
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    {message.type === 'user' ? (
+                      <div className="user-message flex items-start gap-2 sm:gap-3 w-full">
+                        <UserAvatar />
+                        <div className="flex-1 text-sm sm:text-base min-w-0">{message.content}</div>
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="ai-message flex items-start gap-2 sm:gap-3 w-full">
+                        <ProfessorAvatar />
+                        <div className="flex-1 min-w-0">
+                          {isLoading && !message.content ? (
+                            <LoadingAnimation />
+                          ) : (
+                            <>
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm, remarkMath]}
+                                rehypePlugins={[rehypeKatex]}
+                                components={MarkdownComponents}
+                                className="whitespace-pre-wrap break-words space-y-1.5"
+                              >
+                                {message.content || ''}
+                              </ReactMarkdown>
+
+                              {message.relatedTopics && message.relatedTopics.length > 0 && (
+                                <div className="mt-2 -mx-2 sm:mx-0">
+                                  <RelatedTopics
+                                    topics={message.relatedTopics}
+                                    onTopicClick={handleRelatedQueryClick}
+                                  />
+                                </div>
+                              )}
+
+                              {message.relatedQuestions && message.relatedQuestions.length > 0 && (
+                                <div className="mt-2 -mx-2 sm:mx-0">
+                                  <RelatedQuestions
+                                    questions={message.relatedQuestions}
+                                    onQuestionClick={handleRelatedQueryClick}
+                                  />
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
             <div 
               ref={messagesEndRef}
-              className="h-20 w-full"
+              className="h-8 w-full"
               aria-hidden="true"
             />
           </div>
 
           <div className="fixed bottom-0 left-0 right-0 
             bg-gradient-to-t from-background via-background to-transparent 
-            pb-4 pt-6">
-            <div className="max-w-3xl mx-auto px-4 sm:px-0">
+            pb-2 pt-3">
+            <div className="w-full px-2 sm:px-4 max-w-3xl mx-auto">
               <SearchBar
                 key={`follow-up-${searchKey}`}
                 onSearch={handleSearch} 
