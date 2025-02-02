@@ -40,138 +40,86 @@ import OpenAI from 'openai';
   async getExploreContent(query: string, userContext: UserContext): Promise<ExploreResponse> {
     try {
       const systemPrompt = `You are a Gen-Z tutor who explains complex topics in the simplest possible way.
-        First, identify the type of topic:
-        - MATH: Include formulas, equations, and mathematical expressions
-        - PHYSICS: Include relevant equations and units
-        - CHEMISTRY: Include chemical formulas and reactions
-        - BIOLOGY: Include diagrams descriptions and processes
-        - COMPUTER_SCIENCE: Include code snippets or syntax
-        - OTHER: Include key terminology and concepts
+        First, identify the domain of the topic from these categories:
+        - SCIENCE: Physics, Chemistry, Biology, Environmental Science
+        - MATHEMATICS: Algebra, Calculus, Geometry, Statistics
+        - TECHNOLOGY: Computer Science, AI, Robotics, Digital Tech
+        - MEDICAL: Anatomy, Physiology, Healthcare, Medicine
+        - HISTORY: World History, Civilizations, Cultural Studies
+        - BUSINESS: Economics, Finance, Management, Marketing
+        - LAW: Legal Systems, Rights, Regulations
+        - PSYCHOLOGY: Human Behavior, Mental Processes, Development
+        - CURRENT_AFFAIRS: Global Events, Politics, Social Issues
+        - GENERAL: Any other topic or interdisciplinary queries
 
-        You MUST return a JSON response with EXACTLY this structure:
-
+        Return your response in this EXACT JSON format:
         {
-          "content": "CUSTOMIZE based on topic type:\\n\\n
-            First para: Define the concept and its importance. For MATH/PHYSICS/CHEMISTRY, introduce the key formula or equation.\\n\\n
-            Second para: Break down the components. For MATH: explain each part of the formula. For PHYSICS: explain variables and units. For CHEMISTRY: explain reactions.\\n\\n
-            Third para: Show practical applications with specific examples, including numerical examples where relevant.",
+          "domain": "one of the domains listed above",
+          "content": {
+            "paragraph1": "Core concept explanation with key principles (50-75 words)",
+            "paragraph2": "Detailed breakdown with examples specific to '${query}' (50-75 words)",
+            "paragraph3": "Real-world applications and relevance of '${query}' (50-75 words)"
+          },
           "relatedTopics": [
             {
-              "topic": "1-3 word closely related topic",
-              "type": "prerequisite | extension | application | parallel | deeper"
+              "topic": "A foundational concept directly needed to understand '${query}'",
+              "type": "prerequisite"
+            },
+            {
+              "topic": "An advanced concept that builds upon '${query}'",
+              "type": "extension"
+            },
+            {
+              "topic": "A practical real-world application of '${query}'",
+              "type": "application"
+            },
+            {
+              "topic": "A related concept at the same level as '${query}'",
+              "type": "parallel"
+            },
+            {
+              "topic": "A specific aspect of '${query}' worth exploring",
+              "type": "deeper"
             }
-            // exactly 5 topics with these types:
-            // prerequisite: fundamental concept needed first (e.g., "Basic Algebra" for Calculus)
-            // extension: advanced topic that builds on this (e.g., "Quantum Field Theory" for Quantum Physics)
-            // application: real-world use case (e.g., "Neural Networks" for Linear Algebra)
-            // parallel: related concept at same level (e.g., "Chemical Bonding" for Atomic Structure)
-            // deeper: specific aspect worth exploring (e.g., "Wave-Particle Duality" for Quantum Mechanics)
           ],
           "relatedQuestions": [
             {
-              "question": "Keep questions short (8-12 words). Example: 'How do magnets help trains float?'",
-              "type": "application | insight | fact | mystery | discovery",
-              "context": "Brief hook (10-15 words max)"
+              "question": "How is '${query}' used in everyday life?",
+              "type": "application",
+              "context": "Real-world relevance"
+            },
+            {
+              "question": "Why is '${query}' important in [domain]?",
+              "type": "insight",
+              "context": "Understanding significance"
+            },
+            {
+              "question": "What are the key components of '${query}'?",
+              "type": "fact",
+              "context": "Core elements"
+            },
+            {
+              "question": "How does '${query}' relate to [related field]?",
+              "type": "mystery",
+              "context": "Interdisciplinary connections"
+            },
+            {
+              "question": "What's the future potential of '${query}'?",
+              "type": "discovery",
+              "context": "Future implications"
             }
-            // exactly 5 questions
           ]
         }
 
-        Content guidelines:
-        - Each paragraph: 35-50 words
-        - MUST have exactly 3 paragraphs
-        - For MATH topics:
-          * Include relevant formulas with proper notation
-          * Explain each variable
-          * Show example calculations
-        - For PHYSICS topics:
-          * Include equations with units
-          * Explain physical relationships
-          * Show real-world applications
-        - For CHEMISTRY topics:
-          * Include chemical formulas
-          * Show balanced reactions
-          * Explain molecular interactions
-        - For all topics:
-          * Use clear examples
-          * Connect to real applications
-          * Explain step by step
+        IMPORTANT:
+        - All topics and questions must be DIRECTLY related to '${query}'
+        - Use specific examples and terminology from the query's domain
+        - Make connections that are clear and logical
+        - Ensure each related topic builds clear knowledge progression
+        - Questions should explore different aspects of the main topic`;
 
-        Example for Calculus:
-        "The derivative (dy/dx) is the rate of change of a function. It tells us how fast something is changing at any point.\\n\\n
-        To find a derivative, we use limits: lim[h→0] (f(x+h) - f(x))/h. For example, the derivative of x² is 2x, showing the slope at each point.\\n\\n
-        Derivatives help us optimize real problems, like finding maximum profit in business or minimum material costs in engineering."
-
-        Example for Acceleration:
-        "Acceleration (a) measures how quickly velocity changes, given by a = Δv/Δt or a = (v₂-v₁)/t. It's measured in meters per second squared (m/s²).\\n\\n
-        The formula F = ma connects acceleration to force and mass. When you push a 2kg box with 10N force, it accelerates at 5 m/s².\\n\\n
-        We experience acceleration daily: cars speeding up (positive a), braking (negative a), or turning (centripetal a = v²/r)."
-
-        IMPORTANT: 
-        - Always include relevant formulas for MATH/PHYSICS/CHEMISTRY
-        - Use specific examples with numbers
-        - Show practical applications
-        - Keep explanations clear and engaging
-        - Make topics relatable to real life
-        - Use simple, everyday words in questions
-        - Avoid technical or complex terms
-        - Write questions like you're talking to a friend
-        - Make questions easy to understand
-        - Use examples from daily life
-
-        Related Questions Format:
-        * Keep questions very short (8-12 words)
-        * Use simple, everyday words
-        * Start with how/what/why when possible
-        * Make each question direct and clear
-        * Examples of good questions:
-          - "How do rockets use this to reach space?"
-          - "Why does this happen in cold weather?"
-          - "What makes this work in your phone?"
-          - "How do doctors use this to save lives?"
-          - "Why does this matter in everyday life?"
-        * Avoid:
-          - Long explanatory phrases
-          - Technical terminology
-          - Complex sentence structures
-          - Multiple questions in one
-          - Overly detailed context
-
-        IMPORTANT: 
-        - Keep questions short and sweet (max 12 words)
-        - Use everyday language
-        - Make questions clear and direct
-        - Focus on one idea per question
-        - Keep context brief and simple
-
-        Related Topics Guidelines:
-        * Topics should be 1-3 words maximum
-        * Must be closely related to main query
-        * Mix of internal and external connections
-        * Examples for "Quantum Mechanics":
-          - "Wave Mathematics" (prerequisite: math needed for waves)
-          - "Quantum Computing" (application: modern use)
-          - "String Theory" (extension: advanced concept)
-          - "Particle Physics" (parallel: related field)
-          - "Quantum Entanglement" (deeper: specific phenomenon)
-
-        * Examples for "Chemical Bonding":
-          - "Electron Configuration" (prerequisite)
-          - "Molecular Engineering" (extension)
-          - "Drug Design" (application)
-          - "Atomic Structure" (parallel)
-          - "Hydrogen Bonding" (deeper)
-
-        * Ensure each topic:
-          - Has clear connection to query
-          - Represents natural learning path
-          - Offers valuable exploration
-          - Makes sense for level
-          - Sparks curiosity`;
-
-      const userPrompt = `Explain "${query}" for someone aged ${userContext.age} studying for ${userContext.studyingFor}.
-      Make it simple and relatable.
-      Return the response in the exact JSON format specified.`;
+      const userPrompt = `Explain "${query}" for someone aged ${userContext.age}.
+        Follow the exact JSON format and domain-specific paragraph structure.`;
 
       const content = await this.makeRequest(systemPrompt, userPrompt);
       console.log('Raw GPT response:', content);
@@ -180,120 +128,42 @@ import OpenAI from 'openai';
         throw new Error('Empty response from GPT');
       }
 
-      try {
-        const parsedContent = JSON.parse(content);
-        console.log('Parsed content:', parsedContent);
-        
-        if (!parsedContent?.content || typeof parsedContent.content !== 'string') {
-          throw new Error('Content is missing or invalid');
-        }
+      const parsedContent = JSON.parse(content);
+      console.log('Parsed content:', parsedContent);
 
-        // Clean up and normalize the content
-        let cleanContent = parsedContent.content
-          .replace(/\r\n/g, '\n')
-          .replace(/\n{3,}/g, '\n\n')
-          .trim();
-
-        // Split into paragraphs
-        let paragraphs = cleanContent.split(/\n\n/).filter((p: string) => p.trim().length > 0);
-
-        // If we don't have exactly 3 paragraphs, try to split by sentences
-        if (paragraphs.length !== 3) {
-          const sentences = cleanContent.split(/(?<=[.!?])\s+/).filter((s: string) => s.trim());
-          const totalSentences = sentences.length;
-          
-          // Aim for roughly equal distribution of sentences
-          const firstBreak = Math.floor(totalSentences / 3);
-          const secondBreak = Math.floor((2 * totalSentences) / 3);
-
-          paragraphs = [
-            sentences.slice(0, firstBreak).join(' '),
-            sentences.slice(firstBreak, secondBreak).join(' '),
-            sentences.slice(secondBreak).join(' ')
-          ];
-        }
-
-        // Log paragraph lengths but don't throw errors
-        paragraphs = paragraphs.map((para: string, index: number) => {
-          const words = para.trim().split(/\s+/);
-          const wordCount = words.length;
-
-          // Log warnings for non-ideal lengths
-          if (wordCount < 25) {
-            console.warn(`Paragraph ${index + 1} is shorter than ideal (${wordCount} words)`);
-          } else if (wordCount > 60) {
-            console.warn(`Paragraph ${index + 1} is longer than ideal (${wordCount} words)`);
-          }
-
-          // Try to improve very short paragraphs if possible
-          if (wordCount < 20 && index < paragraphs.length - 1) {
-            // Combine with next paragraph if too short
-            const nextPara = paragraphs[index + 1];
-            paragraphs[index + 1] = '';
-            return `${para} ${nextPara}`.trim();
-          }
-
-          // Try to split very long paragraphs
-          if (wordCount > 70 && index < paragraphs.length - 1) {
-            const mid = Math.ceil(words.length / 2);
-            paragraphs[index + 1] = `${words.slice(mid).join(' ')} ${paragraphs[index + 1]}`;
-            return words.slice(0, mid).join(' ');
-          }
-
-          return para;
-        }).filter((p: string) => p.length > 0);
-
-        // Ensure we have content, even if not exactly 3 paragraphs
-        if (paragraphs.length === 0) {
-          paragraphs = [cleanContent];
-        }
-
-        // Update content with formatted paragraphs
-        parsedContent.content = paragraphs.join('\n\n');
-
-        // Validate topics and questions
-        if (!Array.isArray(parsedContent.relatedTopics) || parsedContent.relatedTopics.length !== 5) {
-          throw new Error('Must have exactly 5 related topics');
-        }
-
-        if (!Array.isArray(parsedContent.relatedQuestions) || parsedContent.relatedQuestions.length !== 5) {
-          throw new Error('Must have exactly 5 related questions');
-        }
-
-        // Basic type validation
-        const topicTypes = ['prerequisite', 'extension', 'application', 'parallel', 'deeper'];
-        const questionTypes = ['application', 'insight', 'fact', 'mystery', 'discovery'];
-
-        parsedContent.relatedTopics.forEach((topic: { topic: string; type: string }, i: number) => {
-          if (!topic?.topic || !topic?.type || !topicTypes.includes(topic.type)) {
-            console.warn(`Fixing topic type at index ${i}`);
-            topic.type = topicTypes[i % topicTypes.length];
-          }
-        });
-
-        parsedContent.relatedQuestions.forEach((question: { 
-          question: string; 
-          type: string; 
-          context?: string 
-        }, i: number) => {
-          if (!question?.question || !question?.type || !questionTypes.includes(question.type)) {
-            console.warn(`Fixing question type at index ${i}`);
-            question.type = questionTypes[i % questionTypes.length];
-          }
-        });
-
-        return {
-          content: parsedContent.content,
-          relatedTopics: parsedContent.relatedTopics,
-          relatedQuestions: parsedContent.relatedQuestions
-        };
-      } catch (error) {
-        console.error('Parse/validation error:', error);
-        throw error;
+      // Validate the response structure
+      if (!parsedContent.domain || !parsedContent.content || 
+          !parsedContent.content.paragraph1 || 
+          !parsedContent.content.paragraph2 || 
+          !parsedContent.content.paragraph3) {
+        throw new Error('Invalid response structure');
       }
+
+      // Combine paragraphs into content
+      const formattedContent = [
+        parsedContent.content.paragraph1,
+        parsedContent.content.paragraph2,
+        parsedContent.content.paragraph3
+      ].join('\n\n');
+
+      // Ensure related topics and questions exist
+      const relatedTopics = Array.isArray(parsedContent.relatedTopics) 
+        ? parsedContent.relatedTopics.slice(0, 5) 
+        : [];
+
+      const relatedQuestions = Array.isArray(parsedContent.relatedQuestions)
+        ? parsedContent.relatedQuestions.slice(0, 5)
+        : [];
+
+      return {
+        content: formattedContent,
+        relatedTopics: relatedTopics,
+        relatedQuestions: relatedQuestions
+      };
+
     } catch (error) {
-      console.error('GPT service error:', error);
-      throw new Error(`Failed to get content: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Explore content error:', error);
+      throw new Error('Failed to generate explore content');
     }
   }
 
@@ -343,7 +213,7 @@ import OpenAI from 'openai';
             maxTokens
           );
 
-          const parsedContent = JSON.parse(content);
+        const parsedContent = JSON.parse(content);
           console.log('Parsed content:', parsedContent);
 
           if (this.validateQuestionFormat(parsedContent)) {
@@ -359,12 +229,12 @@ import OpenAI from 'openai';
       }
 
       throw new Error('Failed to generate valid question after multiple attempts');
-    } catch (error) {
+      } catch (error) {
       console.error('Question generation error:', error);
-      throw error;
+        throw error;
+      }
     }
-  }
-
+  
   private getQuestionPrompt(topic: string, level: number, userContext: UserContext): string {
     return `You are an expert educator creating unique, engaging multiple-choice questions.
       Target audience: ${userContext.age} year old student
