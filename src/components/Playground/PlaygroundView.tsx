@@ -282,7 +282,7 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 min-h-screen flex flex-col">
+    <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col">
       {!currentQuestion || sessionStats.isSessionComplete ? (
         <div className="flex-1 flex items-center justify-center">
           {sessionStats.isSessionComplete ? (
@@ -375,16 +375,16 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
           )}
         </div>
       ) : (
-        <div className="animate-fade-in">
-          <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="w-full max-w-3xl mx-auto px-4 py-6 space-y-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="card">
               <div className="flex items-center justify-between">
-                <span className="stats-value text-primary">
+                <span className="stats-value text-xs sm:text-base text-primary">
                   {stats.questions}
                 </span>
-                <Target className="w-5 h-5 text-primary" />
+                <Target className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               </div>
-              <span className="stats-label">Questions</span>
+              <span className="stats-label text-xs sm:text-sm">Questions</span>
             </div>
 
             <div className="card">
@@ -418,19 +418,11 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
             </div>
           </div>
 
-          <div className="card space-y-6">
+          <div className="card">
             <div className="flex justify-between items-start">
-              <h2
-                className="text-base font-medium leading-relaxed text-gray-200 
-                max-w-3xl whitespace-pre-line tracking-wide"
-              >
-                {currentQuestion?.text && currentQuestion.text.split(" ").length > 20 
-                  ? currentQuestion.text.split(".").map((sentence, idx) => (
-                      <span key={idx} className="block mb-1">
-                        {sentence.trim()}.
-                      </span>
-                    ))
-                  : currentQuestion?.text}
+              <h2 className="text-xs sm:text-base font-medium leading-relaxed 
+                text-gray-200 max-w-3xl whitespace-pre-line tracking-wide">
+                {currentQuestion?.text}
               </h2>
               <button
                 onClick={togglePause}
@@ -450,8 +442,8 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
                   key={idx}
                   onClick={() => handleAnswer(idx)}
                   disabled={selectedAnswer !== null}
-                  className={`w-full text-left px-4 py-2.5 rounded-lg transition-all 
-                    text-sm leading-relaxed ${
+                  className={`w-full text-left px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg 
+                    text-xs sm:text-sm leading-relaxed ${
                       selectedAnswer === null
                         ? "bg-card hover:bg-gray-800"
                         : idx === currentQuestion.correctAnswer
@@ -461,7 +453,7 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
                         : "bg-card"
                     }`}
                 >
-                  <span className="inline-block w-6 font-medium">
+                  <span className="inline-block w-5 sm:w-6 font-medium">
                     {String.fromCharCode(65 + idx)}.
                   </span>
                   {option}
@@ -470,14 +462,12 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
             </div>
 
             {showExplanation && (
-              <div
-                className={`px-4 py-3 rounded-lg animate-fade-in ${
-                  selectedAnswer === currentQuestion.correctAnswer
-                    ? "bg-green-500/20 text-green-500"
-                    : "bg-red-500/20 text-red-500"
-                }`}
-              >
-                <p className="text-sm">{currentQuestion.explanation}</p>
+              <div className={`px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-xs sm:text-sm ${
+                selectedAnswer === currentQuestion.correctAnswer
+                  ? "bg-green-500/20 text-green-500"
+                  : "bg-red-500/20 text-red-500"
+              }`}>
+                <p>{currentQuestion.explanation}</p>
 
                 {!isPaused && nextQuestionCountdown !== null && (
                   <div className="mt-4 border-t border-gray-700 pt-4">
