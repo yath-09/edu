@@ -39,96 +39,123 @@ import OpenAI from 'openai';
 
   async getExploreContent(query: string, userContext: UserContext): Promise<ExploreResponse> {
     try {
-      const systemPrompt = `You are a Gen-Z tutor who explains complex topics in the simplest possible way.
+      const systemPrompt = `You are a Gen-Z tutor who explains complex topics concisely.
         First, identify the domain of the topic from these categories:
-        - SCIENCE: Physics, Chemistry, Biology, Environmental Science
-        - MATHEMATICS: Algebra, Calculus, Geometry, Statistics
-        - TECHNOLOGY: Computer Science, AI, Robotics, Digital Tech
-        - MEDICAL: Anatomy, Physiology, Healthcare, Medicine
-        - HISTORY: World History, Civilizations, Cultural Studies
-        - BUSINESS: Economics, Finance, Management, Marketing
-        - LAW: Legal Systems, Rights, Regulations
-        - PSYCHOLOGY: Human Behavior, Mental Processes, Development
-        - CURRENT_AFFAIRS: Global Events, Politics, Social Issues
-        - GENERAL: Any other topic or interdisciplinary queries
+        - SCIENCE: Physics, Chemistry, Biology
+        - MATHEMATICS: Algebra, Calculus, Geometry
+        - TECHNOLOGY: Computer Science, AI, Robotics
+        - MEDICAL: Anatomy, Healthcare, Medicine
+        - HISTORY: World History, Civilizations
+        - BUSINESS: Economics, Finance, Marketing
+        - LAW: Legal Systems, Rights
+        - PSYCHOLOGY: Human Behavior, Development
+        - CURRENT_AFFAIRS: Global Events, Politics
+        - GENERAL: Any other topic
 
         Return your response in this EXACT JSON format:
         {
-          "domain": "one of the domains listed above",
+          "domain": "identified domain",
           "content": {
-            "paragraph1": "Core concept explanation with key principles (50-75 words)",
-            "paragraph2": "Detailed breakdown with examples specific to '${query}' (50-75 words)",
-            "paragraph3": "Real-world applications and relevance of '${query}' (50-75 words)"
+            "paragraph1": "Core concept in around 30-40 words - clear, simple definition",
+            "paragraph2": "Key points in around 30-40 words - main ideas and examples",
+            "paragraph3": "Real applications in around 30-40 words - practical uses and relevance"
           },
           "relatedTopics": [
             {
-              "topic": "A foundational concept directly needed to understand '${query}'",
-              "type": "prerequisite"
+              "topic": "Most fundamental prerequisite concept",
+              "type": "prerequisite",
+              "reason": "Brief explanation of why this is essential to understand first"
             },
             {
-              "topic": "An advanced concept that builds upon '${query}'",
-              "type": "extension"
+              "topic": "Most exciting advanced application",
+              "type": "extension",
+              "reason": "Why this advanced topic is fascinating"
             },
             {
-              "topic": "A practical real-world application of '${query}'",
-              "type": "application"
+              "topic": "Most impactful real-world use",
+              "type": "application",
+              "reason": "How this changes everyday life"
             },
             {
-              "topic": "A related concept at the same level as '${query}'",
-              "type": "parallel"
+              "topic": "Most interesting related concept",
+              "type": "parallel",
+              "reason": "What makes this connection intriguing"
             },
             {
-              "topic": "A specific aspect of '${query}' worth exploring",
-              "type": "deeper"
+              "topic": "Most thought-provoking aspect",
+              "type": "deeper",
+              "reason": "Why this specific aspect is mind-bending"
             }
           ],
           "relatedQuestions": [
             {
-              "question": "How is '${query}' used in everyday life?",
-              "type": "application",
-              "context": "Real-world relevance"
+              "question": "What if...? (speculative question)",
+              "type": "curiosity",
+              "context": "Thought-provoking scenario"
             },
             {
-              "question": "Why is '${query}' important in [domain]?",
+              "question": "How exactly...? (mechanism question)",
+              "type": "mechanism",
+              "context": "Fascinating process to understand"
+            },
+            {
+              "question": "Why does...? (causality question)",
+              "type": "causality",
+              "context": "Surprising cause-effect relationship"
+            },
+            {
+              "question": "Can we...? (possibility question)",
+              "type": "innovation",
+              "context": "Exciting potential development"
+            },
+            {
+              "question": "What's the connection between...? (insight question)",
               "type": "insight",
-              "context": "Understanding significance"
-            },
-            {
-              "question": "What are the key components of '${query}'?",
-              "type": "fact",
-              "context": "Core elements"
-            },
-            {
-              "question": "How does '${query}' relate to [related field]?",
-              "type": "mystery",
-              "context": "Interdisciplinary connections"
-            },
-            {
-              "question": "What's the future potential of '${query}'?",
-              "type": "discovery",
-              "context": "Future implications"
+              "context": "Unexpected relationship"
             }
           ]
         }
 
-        IMPORTANT:
-        - All topics and questions must be DIRECTLY related to '${query}'
-        - Use specific examples and terminology from the query's domain
-        - Make connections that are clear and logical
-        - Ensure each related topic builds clear knowledge progression
-        - Questions should explore different aspects of the main topic`;
+        IMPORTANT RULES:
+        - Each paragraph MUST be exactly 30 words
+        - Use simple, clear language
+        - Focus on key information only
+        - No repetition between paragraphs
+        - Make every word count
+        - Keep examples specific and brief
 
-      const userPrompt = `Explain "${query}" for someone aged ${userContext.age}.
-        Follow the exact JSON format and domain-specific paragraph structure.`;
+        SUBTOPIC GUIDELINES:
+        - Focus on the most fascinating aspects
+        - Highlight unexpected connections
+        - Show real-world relevance
+        - Include cutting-edge developments
+        - Connect to current trends
+        - Emphasize "wow factor"
 
-      const content = await this.makeRequest(systemPrompt, userPrompt);
+        QUESTION GUIDELINES:
+        - Start with curiosity triggers: "What if", "How exactly", "Why does", "Can we"
+        - Focus on mind-bending aspects
+        - Highlight counterintuitive elements
+        - Explore edge cases
+        - Connect to emerging trends
+        - Challenge assumptions
+        - Spark imagination
+        - Make reader think "I never thought about that!"`;
+
+      const userPrompt = `Explain "${query}" in exactly three 30-word paragraphs:
+        1. Basic definition
+        2. Key points
+        3. Real-world applications
+        Make it engaging for someone aged ${userContext.age}.`;
+
+        const content = await this.makeRequest(systemPrompt, userPrompt);
       console.log('Raw GPT response:', content);
       
       if (!content) {
         throw new Error('Empty response from GPT');
       }
 
-      const parsedContent = JSON.parse(content);
+        const parsedContent = JSON.parse(content);
       console.log('Parsed content:', parsedContent);
 
       // Validate the response structure
@@ -168,163 +195,159 @@ import OpenAI from 'openai';
   }
 
   private validateQuestionFormat(question: Question): boolean {
-    if (!question?.text || typeof question.text !== 'string' || question.text.trim() === '') {
-      console.log('Invalid text');
-      return false;
-    }
-
-    if (!Array.isArray(question.options) || question.options.length !== 4) {
-      console.log('Invalid options array');
-      return false;
-    }
-
-    if (question.options.some((opt: string) => typeof opt !== 'string' || opt.trim() === '')) {
-      console.log('Invalid option content');
-      return false;
-    }
-
+    // Basic validation
+    if (!question.text?.trim()) return false;
+    if (!Array.isArray(question.options) || question.options.length !== 4) return false;
+    if (question.options.some(opt => !opt?.trim())) return false;
     if (typeof question.correctAnswer !== 'number' || 
         question.correctAnswer < 0 || 
-        question.correctAnswer > 3) {
-      console.log('Invalid correctAnswer');
-      return false;
-    }
+        question.correctAnswer > 3) return false;
+    if (!question.explanation?.trim()) return false;
 
-    if (!question.explanation || typeof question.explanation !== 'string') {
-      console.log('Invalid explanation');
-      return false;
-    }
+    // Additional validation
+    if (question.text.length < 10) return false;  // Too short
+    if (question.options.length !== new Set(question.options).size) return false; // Duplicates
+    if (question.explanation.length < 20) return false; // Too short explanation
 
     return true;
   }
 
   async getPlaygroundQuestion(topic: string, level: number, userContext: UserContext): Promise<Question> {
     try {
-      let attempts = 0;
-      const maxAttempts = 3;
-      const maxTokens = 1000; // Reduced token limit for faster response
+      const aspects = [
+        'core_concepts',
+        'applications',
+        'problem_solving',
+        'analysis',
+        'current_trends'
+      ];
 
-      while (attempts < maxAttempts) {
-        try {
-          console.log(`Generating question attempt ${attempts + 1}`);
-          const content = await this.makeRequest(
-            this.getQuestionPrompt(topic, level, userContext),
-            `Create one multiple choice question about "${topic}"`,
-            maxTokens
-          );
+      // Randomly select an aspect to focus on
+      const selectedAspect = aspects[Math.floor(Math.random() * aspects.length)];
+      
+      const systemPrompt = `Generate a UNIQUE multiple-choice question about ${topic}.
+        Focus on: ${selectedAspect.replace('_', ' ')}
 
-        const parsedContent = JSON.parse(content);
-          console.log('Parsed content:', parsedContent);
-
-          if (this.validateQuestionFormat(parsedContent)) {
-            return parsedContent;
-          }
-
-          console.warn(`Invalid format, attempt ${attempts + 1} of ${maxAttempts}`);
-        } catch (error) {
-          console.error(`Error in attempt ${attempts + 1}:`, error);
+        Return in this JSON format:
+        {
+          "text": "question text here",
+          "options": ["option A", "option B", "option C", "option D"],
+          "correctAnswer": RANDOMLY_PICKED_NUMBER_0_TO_3,
+          "explanation": "explanation here",
+          "difficulty": ${level},
+          "topic": "${topic}",
+          "subtopic": "specific subtopic",
+          "questionType": "conceptual",
+          "ageGroup": "${userContext.age}"
         }
-        
-        attempts++;
+
+        IMPORTANT RULES FOR UNIQUENESS:
+        1. For ${topic}, based on selected aspect:
+           - core_concepts: Focus on fundamental principles and theories
+           - applications: Focus on real-world use cases and implementations
+           - problem_solving: Present a scenario that needs solution
+           - analysis: Compare different approaches or technologies
+           - current_trends: Focus on recent developments and future directions
+
+        2. Question Variety:
+           - NEVER use the same question pattern twice
+           - Mix theoretical and practical aspects
+           - Include industry-specific examples
+           - Use different question formats (what/why/how/compare)
+           - Incorporate current developments in ${topic}
+
+        3. Answer Choices:
+           - Make ALL options equally plausible
+           - Randomly assign the correct answer (0-3)
+           - Ensure options are distinct but related
+           - Include common misconceptions
+           - Make wrong options educational
+
+        4. Format Requirements:
+           - Question must be detailed and specific
+           - Each option must be substantive
+           - Explanation must cover why correct answer is right AND why others are wrong
+           - Include real-world context where possible
+           - Use age-appropriate language
+
+        ENSURE HIGH ENTROPY:
+        - Randomize question patterns
+        - Vary difficulty within level ${level}
+        - Mix theoretical and practical aspects
+        - Use different companies/technologies as examples
+        - Include various ${topic} scenarios`;
+
+      const userPrompt = `Create a completely unique ${level}/10 difficulty question about ${topic}.
+        Focus on ${selectedAspect.replace('_', ' ')}.
+        Ensure the correct answer is randomly placed.
+        Make it engaging for a ${userContext.age} year old student.
+        Use current examples and trends.`;
+
+      const content = await this.makeRequest(systemPrompt, userPrompt, 1500);
+      
+      if (!content) {
+        throw new Error('Empty response received');
       }
 
-      throw new Error('Failed to generate valid question after multiple attempts');
+      let parsedContent: Question;
+      try {
+        parsedContent = JSON.parse(content);
       } catch (error) {
+        console.error('JSON Parse Error:', error);
+        throw new Error('Invalid JSON response');
+      }
+
+      // Randomly shuffle the options and adjust correctAnswer accordingly
+      const shuffled = this.shuffleOptionsAndAnswer(parsedContent);
+
+      // Validate and format the question
+      const formattedQuestion: Question = {
+        text: shuffled.text || '',
+        options: shuffled.options,
+        correctAnswer: shuffled.correctAnswer,
+        explanation: shuffled.explanation || '',
+        difficulty: level,
+        topic: topic,
+        subtopic: parsedContent.subtopic || topic,
+        questionType: 'conceptual',
+        ageGroup: userContext.age.toString()
+      };
+
+      if (this.validateQuestionFormat(formattedQuestion)) {
+        return formattedQuestion;
+      }
+
+      throw new Error('Generated question failed validation');
+    } catch (error) {
       console.error('Question generation error:', error);
-        throw error;
-      }
+      throw new Error('Failed to generate valid question');
     }
-  
-  private getQuestionPrompt(topic: string, level: number, userContext: UserContext): string {
-    return `You are an expert educator creating unique, engaging multiple-choice questions.
-      Target audience: ${userContext.age} year old student
-      Topic: "${topic}"
-      Difficulty level: ${level}/10
+  }
 
-      QUESTION REQUIREMENTS:
-      1. Create a unique, engaging question that:
-         - Is perfectly tailored for a ${userContext.age}-year-old's cognitive level
-         - Introduces new concepts or problem-solving approaches
-         - Covers aspects of ${topic} in an interesting way
-         - Uses real-world scenarios when possible
-         - Avoids repetitive formats
+  private shuffleOptionsAndAnswer(question: Question): Question {
+    // Create array of option objects with original index
+    const optionsWithIndex = question.options.map((opt, idx) => ({
+      text: opt,
+      isCorrect: idx === question.correctAnswer
+    }));
 
-      2. Difficulty Guidelines:
-         - Make it slightly challenging but definitely solvable
-         - Match difficulty level ${level}/10
-         - Consider age-appropriate complexity
-         - Include thought-provoking elements
-         - Keep it engaging and interesting
-
-      3. Answer Choices:
-         - Create four well-randomized, diverse options
-         - Make wrong choices reasonable but clearly incorrect
-         - Avoid obviously wrong options
-         - Keep options distinct from each other
-         - Randomize correct answer placement
-
-      4. Question Styles (mix these up):
-         - Direct conceptual questions
-         - Scenario-based problems
-         - Real-world applications
-         - Fill-in-the-blank format
-         - Cause-and-effect relationships
-         - Compare-and-contrast setups
-
-      STRICT JSON FORMAT:
-      {
-        "text": "Your unique, engaging question here?",
-        "options": [
-          "Well-crafted first option",
-          "Thoughtful second option",
-          "Reasonable third option",
-          "Plausible fourth option"
-        ],
-        "correctAnswer": "MUST be a number 0-3, randomly placed",
-        "explanation": "Detailed, insightful explanation that:
-          - Clearly explains why the correct answer is right
-          - Addresses why other options are wrong
-          - Provides additional learning value
-          - Uses clear, age-appropriate language
-          - Connects to real-world understanding",
-        "difficulty": ${level},
-        "topic": "${topic}",
-        "subtopic": "specific aspect being tested",
-        "questionType": "direct | scenario | application | analysis",
-        "ageGroup": "${userContext.age}"
-      }
-
-      CRITICAL RULES:
-      1. Question Quality:
-         - Must be fresh and unique
-         - Should be engaging and informative
-         - Must be age-appropriate
-         - Should encourage critical thinking
-         - Must be clearly worded
-
-      2. Answer Format:
-         - correctAnswer must be number 0-3
-         - All options must be unique
-         - No obviously wrong choices
-         - Randomize answer placement
-         - Keep options balanced in length
-
-      3. Explanation Quality:
-         - Must be clear and insightful
-         - Should teach even if wrong
-         - Include relevant examples
-         - Connect to real life
-         - Use simple language
-
-      Remember:
-      - Make each question feel fresh and new
-      - Keep difficulty appropriate for age ${userContext.age}
-      - Ensure educational value
-      - Use clear, engaging language
-      - Make it interesting and fun to learn`;
+    // Shuffle the options
+    for (let i = optionsWithIndex.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [optionsWithIndex[i], optionsWithIndex[j]] = [optionsWithIndex[j], optionsWithIndex[i]];
     }
+
+    // Find new index of correct answer
+    const newCorrectAnswer = optionsWithIndex.findIndex(opt => opt.isCorrect);
+
+    return {
+      ...question,
+      options: optionsWithIndex.map(opt => opt.text),
+      correctAnswer: newCorrectAnswer
+    };
+  }
   
-    async getTestQuestions(topic: string, examType: 'JEE' | 'NEET'): Promise<Question[]> {
+  async getTestQuestions(topic: string, examType: 'JEE' | 'NEET'): Promise<Question[]> {
     try {
       const systemPrompt = `Create a ${examType} exam test set about ${topic}.
         Generate exactly 15 questions following this structure:

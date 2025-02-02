@@ -48,22 +48,22 @@ const UserAvatar = () => (
 
 const MarkdownComponents: Record<string, React.FC<MarkdownComponentProps>> = {
   h1: ({ children, ...props }) => (
-    <h1 className="text-2xl font-bold text-gray-100 mt-6 mb-4" {...props}>
+    <h1 className="text-xl sm:text-2xl font-bold text-gray-100 mt-6 mb-4" {...props}>
       {children}
     </h1>
   ),
   h2: ({ children, ...props }) => (
-    <h2 className="text-xl font-semibold text-gray-100 mt-5 mb-3" {...props}>
+    <h2 className="text-lg sm:text-xl font-semibold text-gray-100 mt-5 mb-3" {...props}>
       {children}
     </h2>
   ),
   h3: ({ children, ...props }) => (
-    <h3 className="text-lg font-medium text-gray-200 mt-4 mb-2" {...props}>
+    <h3 className="text-base sm:text-lg font-medium text-gray-200 mt-4 mb-2" {...props}>
       {children}
     </h3>
   ),
   p: ({ children, ...props }) => (
-    <p className="text-gray-300 my-2 text-base leading-relaxed" {...props}>
+    <p className="text-sm sm:text-base text-gray-300 my-2 leading-relaxed" {...props}>
       {children}
     </p>
   ),
@@ -84,8 +84,8 @@ const MarkdownComponents: Record<string, React.FC<MarkdownComponentProps>> = {
   ),
   code: ({ children, inline, ...props }) => (
     inline ? 
-      <code className="bg-gray-700 px-1 rounded text-sm" {...props}>{children}</code> :
-      <code className="block bg-gray-700 p-2 rounded my-2 text-sm overflow-x-auto" {...props}>
+      <code className="bg-gray-700 px-1 rounded text-xs sm:text-sm" {...props}>{children}</code> :
+      <code className="block bg-gray-700 p-2 rounded my-2 text-xs sm:text-sm overflow-x-auto" {...props}>
         {children}
       </code>
   ),
@@ -165,32 +165,46 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   const [searchKey, setSearchKey] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const gptService = useMemo(() => new GPTService(), []);
-  const latestMessageRef = useRef<HTMLDivElement>(null);
-  const [isFirstQuery, setIsFirstQuery] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const scrollToLatest = useCallback(() => {
-    if (!isFirstQuery) {
-      setTimeout(() => {
-        latestMessageRef.current?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start'
-        });
-      }, 100);
+  const scrollIntoView = () => {
+    const scrollHeight = document.documentElement.scrollHeight;
+    const windowHeight = window.innerHeight;
+    const scrollPosition = scrollHeight - windowHeight - 200; // 200px offset for the search bar
+
+    window.scrollTo({
+      top: Math.max(0, scrollPosition),
+      behavior: 'smooth'
+    });
+  };
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      // Wait for content to render
+      const timer = setTimeout(() => {
+        scrollIntoView();
+      }, 200); // Slightly longer delay to ensure content is rendered
+      return () => clearTimeout(timer);
     }
-  }, [isFirstQuery]);
+  }, [messages]);
 
   const handleSearch = useCallback(async (query: string) => {
     try {
       setIsLoading(true);
+      
+      // Add user message
       setMessages(prev => [...prev, { 
         type: 'user', 
         content: query 
       }]);
+
+      // Add loading message
       setMessages(prev => [...prev, { 
         type: 'ai', 
-        content: ''
+        content: '' 
       }]);
+
       setShowInitialSearch(false);
       setSearchKey(prev => prev + 1);
 
@@ -200,6 +214,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         throw new Error('Invalid response received');
       }
 
+      // Update with actual response
       setMessages(prev => [
         ...prev.slice(0, -1),
         { 
@@ -210,12 +225,6 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         }
       ]);
       
-      if (isFirstQuery) {
-        setIsFirstQuery(false);
-      } else {
-        scrollToLatest();
-      }
-      
       onSuccess('Content loaded successfully');
     } catch (error) {
       console.error('Search error:', error);
@@ -223,7 +232,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [gptService, onError, onSuccess, userContext, scrollToLatest, isFirstQuery]);
+  }, [gptService, onError, onSuccess, userContext]);
 
   const handleRelatedQueryClick = useCallback((query: string) => {
     if (onRelatedQueryClick) {
@@ -234,22 +243,22 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
   useEffect(() => {
     if (initialQuery) {
-      setIsFirstQuery(true);
       handleSearch(initialQuery);
     }
   }, [initialQuery, handleSearch]);
 
   return (
-    <div className="w-full min-h-screen flex flex-col md:max-w-4xl md:mx-auto">
+    <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col" ref={containerRef}>
       {showInitialSearch ? (
-        <div className="flex-1 flex items-start md:items-center pt-32 md:pt-0">
-          <div className="w-full px-2 md:max-w-3xl md:mx-auto">
+        <div className="flex-1 flex items-center pt-16 sm:pt-0">
+          <div className="w-full px-4 sm:max-w-2xl lg:max-w-3xl mx-auto">
             <div className="text-center space-y-4 mb-8">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
-                
+              <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r 
+                from-primary to-purple-500 bg-clip-text text-transparent">
+                {/* ... */}
               </h1>
             </div>
-            <SearchBar 
+            <SearchBar
               key="initial-search"
               onSearch={handleSearch} 
               placeholder="Enter what you want to explore..."
@@ -260,24 +269,23 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 { text: 'Machine Learning', icon: '🤖' },
                 { text: 'World History', icon: '🌍' }
               ]}
-              className="bg-gray-900/80"
+              className="bg-gray-900/80 backdrop-blur-lg"
             />
           </div>
         </div>
       ) : (
-        <div className="relative flex flex-col min-h-screen">
-          <div className="space-y-4 sm:space-y-6 py-4 sm:py-6 pb-24 md:pb-20">
-            <div className="space-y-3 sm:space-y-4" ref={messagesEndRef}>
-              {messages.map((message, index) => (
-                <div 
-                  key={index} 
-                  className={`message ${message.type} px-3 sm:px-4 md:px-0`}
-                  ref={index === messages.length - 1 ? latestMessageRef : null}
-                >
+        <div className="relative flex flex-col">
+          <div className="space-y-4 pb-32">
+            {messages.map((message, index) => (
+              <div 
+                key={index} 
+                className="px-4 sm:px-0 mx-auto max-w-3xl"
+              >
+                <div className="flex items-start gap-3">
                   {message.type === 'user' ? (
                     <div className="user-message flex items-start gap-3">
                       <UserAvatar />
-                      <div className="flex-1">{message.content}</div>
+                      <div className="flex-1 text-sm sm:text-base">{message.content}</div>
                     </div>
                   ) : (
                     <div className="ai-message flex items-start gap-3">
@@ -315,19 +323,27 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+            <div 
+              ref={messagesEndRef}
+              className="h-20 w-full"
+              aria-hidden="true"
+            />
           </div>
 
-          <div className="fixed md:sticky bottom-0 left-0 right-0 md:bottom-4 px-2 sm:px-4 md:px-0 
-            bg-gradient-to-t from-background via-background to-transparent pb-4 pt-6">
-            <SearchBar 
-              key={`follow-up-${searchKey}`}
-              onSearch={handleSearch} 
-              placeholder="Ask a follow-up question..."
-              centered={false}
-              className="bg-gray-900/80 backdrop-blur-lg border border-gray-700/50 shadow-xl"
-            />
+          <div className="fixed bottom-0 left-0 right-0 
+            bg-gradient-to-t from-background via-background to-transparent 
+            pb-4 pt-6">
+            <div className="max-w-3xl mx-auto px-4 sm:px-0">
+              <SearchBar
+                key={`follow-up-${searchKey}`}
+                onSearch={handleSearch} 
+                placeholder="Ask a follow-up question..."
+                centered={false}
+                className="bg-gray-900/80 backdrop-blur-lg border border-gray-700/50"
+              />
+            </div>
           </div>
         </div>
       )}
