@@ -345,9 +345,9 @@ import OpenAI from 'openai';
       options: optionsWithIndex.map(opt => opt.text),
       correctAnswer: newCorrectAnswer
     };
-  }
+    }
   
-  async getTestQuestions(topic: string, examType: 'JEE' | 'NEET'): Promise<Question[]> {
+    async getTestQuestions(topic: string, examType: 'JEE' | 'NEET'): Promise<Question[]> {
     try {
       const systemPrompt = `Create a ${examType} exam test set about ${topic}.
         Generate exactly 15 questions following this structure:
