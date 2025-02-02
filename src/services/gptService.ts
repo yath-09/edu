@@ -1,10 +1,10 @@
 import { Question, UserContext, ExploreResponse } from '../types';
 import OpenAI from 'openai';
-
-export class GPTService {
+  
+  export class GPTService {
   private openai: OpenAI;
-
-  constructor() {
+  
+    constructor() {
     this.openai = new OpenAI({
       apiKey: import.meta.env.VITE_OPENAI_API_KEY,
       dangerouslyAllowBrowser: true
@@ -24,14 +24,14 @@ export class GPTService {
             role: 'user', 
             content: userPrompt 
           }
-        ],
-        temperature: 0.7,
+            ],
+            temperature: 0.7,
         max_tokens: maxTokens,
-        response_format: { type: "json_object" }
+            response_format: { type: "json_object" }
       });
 
       return response.choices[0].message?.content || '';
-    } catch (error) {
+      } catch (error) {
       console.error('OpenAI API Error:', error);
       throw new Error('Failed to generate content');
     }
@@ -40,298 +40,510 @@ export class GPTService {
   async getExploreContent(query: string, userContext: UserContext): Promise<ExploreResponse> {
     try {
       const systemPrompt = `You are a Gen-Z tutor who explains complex topics in the simplest possible way.
-      You MUST return a JSON response with EXACTLY this structure - no additional fields or modifications:
+        First, identify the type of topic:
+        - MATH: Include formulas, equations, and mathematical expressions
+        - PHYSICS: Include relevant equations and units
+        - CHEMISTRY: Include chemical formulas and reactions
+        - BIOLOGY: Include diagrams descriptions and processes
+        - COMPUTER_SCIENCE: Include code snippets or syntax
+        - OTHER: Include key terminology and concepts
 
-      {
-        "parts": [
-          "string content for introduction and basic concept (at least 150 words)",
-          "string content for main explanation with relatable examples (at least 200 words)",
-          "string content for real-world applications and summary (at least 150 words)"
-        ],
-        "relatedQueries": [
-          {
-            "query": "EXAMPLE: If main topic is 'Quantum Physics', then write 'Wave-Particle Duality'",
-            "type": "prerequisite",
-            "context": "EXAMPLE: 'POV: You just found out everything you touch is actually 99.9% empty space 🤯'"
-          },
-          {
-            "query": "EXAMPLE: If topic is 'Python Programming', then write 'Object-Oriented Programming'",
-            "type": "extension",
-            "context": "EXAMPLE: 'The coding secret that made Minecraft possible... and why it's breaking the internet'"
-          },
-          {
-            "query": "EXAMPLE: If topic is 'Chemical Bonding', then write 'Drug Design Chemistry'",
-            "type": "application",
-            "context": "EXAMPLE: 'They said this molecule was impossible to make... until this happened'"
-          },
-          {
-            "query": "EXAMPLE: If topic is 'Natural Selection', then write 'AI Evolution'",
-            "type": "parallel",
-            "context": "EXAMPLE: 'Wait till you see how AI is literally copying nature's 4-billion-year cheat code'"
-          },
-          {
-            "query": "EXAMPLE: If topic is 'Gravity', then write 'Black Holes'",
-            "type": "deeper",
-            "context": "EXAMPLE: 'The universe's biggest mystery that even Einstein couldn't solve... until now'"
-          }
-        ]
-      }
+        You MUST return a JSON response with EXACTLY this structure:
 
-      Content guidelines:
-      - Each main content part should be detailed and comprehensive (minimum 150-200 words each)
-      - For related queries:
-        * 'query' must be an ACTUAL TOPIC NAME, not a description
-        * 'context' must be a viral-style hook that creates suspense or curiosity
-        * Keep contexts short and punchy (10-15 words)
-        * Make each hook unique and topic-specific:
-          - Create unexpected connections to daily life
-          - Use current trends and viral content styles
-          - Make surprising revelations about the topic
-          - Connect to things people already know
-          - Challenge common assumptions
-          - Reveal hidden aspects of the topic
-          - Use humor and unexpected comparisons
-          - Create "wait, what?" moments
-          - Make complex ideas sound intriguing
-          - Use conversational, Gen-Z style language
+        {
+          "content": "CUSTOMIZE based on topic type:\\n\\n
+            First para: Define the concept and its importance. For MATH/PHYSICS/CHEMISTRY, introduce the key formula or equation.\\n\\n
+            Second para: Break down the components. For MATH: explain each part of the formula. For PHYSICS: explain variables and units. For CHEMISTRY: explain reactions.\\n\\n
+            Third para: Show practical applications with specific examples, including numerical examples where relevant.",
+          "relatedTopics": [
+            {
+              "topic": "1-3 word closely related topic",
+              "type": "prerequisite | extension | application | parallel | deeper"
+            }
+            // exactly 5 topics with these types:
+            // prerequisite: fundamental concept needed first (e.g., "Basic Algebra" for Calculus)
+            // extension: advanced topic that builds on this (e.g., "Quantum Field Theory" for Quantum Physics)
+            // application: real-world use case (e.g., "Neural Networks" for Linear Algebra)
+            // parallel: related concept at same level (e.g., "Chemical Bonding" for Atomic Structure)
+            // deeper: specific aspect worth exploring (e.g., "Wave-Particle Duality" for Quantum Mechanics)
+          ],
+          "relatedQuestions": [
+            {
+              "question": "Keep questions short (8-12 words). Example: 'How do magnets help trains float?'",
+              "type": "application | insight | fact | mystery | discovery",
+              "context": "Brief hook (10-15 words max)"
+            }
+            // exactly 5 questions
+          ]
+        }
 
-        * Examples of good hooks (for inspiration only, create your own):
-          "Your favorite game mechanic was actually invented by accident"
-          "The math equation that predicted TikTok would go viral"
-          "When nature copied a video game design (yes, really)"
-          "This simple trick powers every phone on the planet"
-          "A coding mistake that became a billion-dollar feature"
+        Content guidelines:
+        - Each paragraph: 35-50 words
+        - MUST have exactly 3 paragraphs
+        - For MATH topics:
+          * Include relevant formulas with proper notation
+          * Explain each variable
+          * Show example calculations
+        - For PHYSICS topics:
+          * Include equations with units
+          * Explain physical relationships
+          * Show real-world applications
+        - For CHEMISTRY topics:
+          * Include chemical formulas
+          * Show balanced reactions
+          * Explain molecular interactions
+        - For all topics:
+          * Use clear examples
+          * Connect to real applications
+          * Explain step by step
 
-      DO NOT modify the JSON structure. Keep exactly 5 related queries with the exact types shown.
-      IMPORTANT: Create unique, topic-specific hooks. Don't follow any fixed patterns. Let each hook naturally fit its topic.`;
+        Example for Calculus:
+        "The derivative (dy/dx) is the rate of change of a function. It tells us how fast something is changing at any point.\\n\\n
+        To find a derivative, we use limits: lim[h→0] (f(x+h) - f(x))/h. For example, the derivative of x² is 2x, showing the slope at each point.\\n\\n
+        Derivatives help us optimize real problems, like finding maximum profit in business or minimum material costs in engineering."
+
+        Example for Acceleration:
+        "Acceleration (a) measures how quickly velocity changes, given by a = Δv/Δt or a = (v₂-v₁)/t. It's measured in meters per second squared (m/s²).\\n\\n
+        The formula F = ma connects acceleration to force and mass. When you push a 2kg box with 10N force, it accelerates at 5 m/s².\\n\\n
+        We experience acceleration daily: cars speeding up (positive a), braking (negative a), or turning (centripetal a = v²/r)."
+
+        IMPORTANT: 
+        - Always include relevant formulas for MATH/PHYSICS/CHEMISTRY
+        - Use specific examples with numbers
+        - Show practical applications
+        - Keep explanations clear and engaging
+        - Make topics relatable to real life
+        - Use simple, everyday words in questions
+        - Avoid technical or complex terms
+        - Write questions like you're talking to a friend
+        - Make questions easy to understand
+        - Use examples from daily life
+
+        Related Questions Format:
+        * Keep questions very short (8-12 words)
+        * Use simple, everyday words
+        * Start with how/what/why when possible
+        * Make each question direct and clear
+        * Examples of good questions:
+          - "How do rockets use this to reach space?"
+          - "Why does this happen in cold weather?"
+          - "What makes this work in your phone?"
+          - "How do doctors use this to save lives?"
+          - "Why does this matter in everyday life?"
+        * Avoid:
+          - Long explanatory phrases
+          - Technical terminology
+          - Complex sentence structures
+          - Multiple questions in one
+          - Overly detailed context
+
+        IMPORTANT: 
+        - Keep questions short and sweet (max 12 words)
+        - Use everyday language
+        - Make questions clear and direct
+        - Focus on one idea per question
+        - Keep context brief and simple
+
+        Related Topics Guidelines:
+        * Topics should be 1-3 words maximum
+        * Must be closely related to main query
+        * Mix of internal and external connections
+        * Examples for "Quantum Mechanics":
+          - "Wave Mathematics" (prerequisite: math needed for waves)
+          - "Quantum Computing" (application: modern use)
+          - "String Theory" (extension: advanced concept)
+          - "Particle Physics" (parallel: related field)
+          - "Quantum Entanglement" (deeper: specific phenomenon)
+
+        * Examples for "Chemical Bonding":
+          - "Electron Configuration" (prerequisite)
+          - "Molecular Engineering" (extension)
+          - "Drug Design" (application)
+          - "Atomic Structure" (parallel)
+          - "Hydrogen Bonding" (deeper)
+
+        * Ensure each topic:
+          - Has clear connection to query
+          - Represents natural learning path
+          - Offers valuable exploration
+          - Makes sense for level
+          - Sparks curiosity`;
 
       const userPrompt = `Explain "${query}" for someone aged ${userContext.age} studying for ${userContext.studyingFor}.
       Make it simple and relatable.
       Return the response in the exact JSON format specified.`;
 
       const content = await this.makeRequest(systemPrompt, userPrompt);
+      console.log('Raw GPT response:', content);
       
+      if (!content) {
+        throw new Error('Empty response from GPT');
+      }
+
       try {
         const parsedContent = JSON.parse(content);
+        console.log('Parsed content:', parsedContent);
         
-        // Basic structure validation
-        if (!parsedContent || typeof parsedContent !== 'object') {
-          throw new Error('Response is not a valid JSON object');
+        if (!parsedContent?.content || typeof parsedContent.content !== 'string') {
+          throw new Error('Content is missing or invalid');
         }
 
-        if (!Array.isArray(parsedContent.parts) || parsedContent.parts.length === 0) {
-          throw new Error('Parts array is missing or empty');
-        }
+        // Clean up and normalize the content
+        let cleanContent = parsedContent.content
+          .replace(/\r\n/g, '\n')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim();
 
-        if (!Array.isArray(parsedContent.relatedQueries) || parsedContent.relatedQueries.length !== 5) {
-          throw new Error('RelatedQueries must be an array with exactly 5 items');
-        }
+        // Split into paragraphs
+        let paragraphs = cleanContent.split(/\n\n/).filter((p: string) => p.trim().length > 0);
 
-        // Add type annotation for the parameter
-        if (!parsedContent.parts.every((p: unknown) => typeof p === 'string' && p.trim().length > 0)) {
-          throw new Error('All parts must be non-empty strings');
-        }
-
-        // Validate related queries
-        const requiredTypes = ['prerequisite', 'extension', 'application', 'parallel', 'deeper'];
-        
-        for (const [index, query] of parsedContent.relatedQueries.entries()) {
-          if (!query || typeof query !== 'object') {
-            throw new Error(`Invalid query object at index ${index}`);
-          }
+        // If we don't have exactly 3 paragraphs, try to split by sentences
+        if (paragraphs.length !== 3) {
+          const sentences = cleanContent.split(/(?<=[.!?])\s+/).filter((s: string) => s.trim());
+          const totalSentences = sentences.length;
           
-          if (typeof query.query !== 'string' || query.query.trim().length === 0) {
-            throw new Error(`Invalid query string at index ${index}`);
-          }
-          
-          if (!requiredTypes.includes(query.type)) {
-            throw new Error(`Invalid query type at index ${index}: ${query.type}`);
-          }
-          
-          if (typeof query.context !== 'string' || query.context.trim().length === 0) {
-            throw new Error(`Invalid context at index ${index}`);
-          }
+          // Aim for roughly equal distribution of sentences
+          const firstBreak = Math.floor(totalSentences / 3);
+          const secondBreak = Math.floor((2 * totalSentences) / 3);
+
+          paragraphs = [
+            sentences.slice(0, firstBreak).join(' '),
+            sentences.slice(firstBreak, secondBreak).join(' '),
+            sentences.slice(secondBreak).join(' ')
+          ];
         }
 
-        // Verify all required types are present exactly once
-        const types = parsedContent.relatedQueries.map((q: { type: string }) => q.type);
-        const uniqueTypes = new Set(types);
-        if (uniqueTypes.size !== requiredTypes.length) {
-          throw new Error('Each query type must appear exactly once');
+        // Log paragraph lengths but don't throw errors
+        paragraphs = paragraphs.map((para: string, index: number) => {
+          const words = para.trim().split(/\s+/);
+          const wordCount = words.length;
+
+          // Log warnings for non-ideal lengths
+          if (wordCount < 25) {
+            console.warn(`Paragraph ${index + 1} is shorter than ideal (${wordCount} words)`);
+          } else if (wordCount > 60) {
+            console.warn(`Paragraph ${index + 1} is longer than ideal (${wordCount} words)`);
+          }
+
+          // Try to improve very short paragraphs if possible
+          if (wordCount < 20 && index < paragraphs.length - 1) {
+            // Combine with next paragraph if too short
+            const nextPara = paragraphs[index + 1];
+            paragraphs[index + 1] = '';
+            return `${para} ${nextPara}`.trim();
+          }
+
+          // Try to split very long paragraphs
+          if (wordCount > 70 && index < paragraphs.length - 1) {
+            const mid = Math.ceil(words.length / 2);
+            paragraphs[index + 1] = `${words.slice(mid).join(' ')} ${paragraphs[index + 1]}`;
+            return words.slice(0, mid).join(' ');
+          }
+
+          return para;
+        }).filter((p: string) => p.length > 0);
+
+        // Ensure we have content, even if not exactly 3 paragraphs
+        if (paragraphs.length === 0) {
+          paragraphs = [cleanContent];
         }
 
-        return parsedContent as ExploreResponse;
+        // Update content with formatted paragraphs
+        parsedContent.content = paragraphs.join('\n\n');
+
+        // Validate topics and questions
+        if (!Array.isArray(parsedContent.relatedTopics) || parsedContent.relatedTopics.length !== 5) {
+          throw new Error('Must have exactly 5 related topics');
+        }
+
+        if (!Array.isArray(parsedContent.relatedQuestions) || parsedContent.relatedQuestions.length !== 5) {
+          throw new Error('Must have exactly 5 related questions');
+        }
+
+        // Basic type validation
+        const topicTypes = ['prerequisite', 'extension', 'application', 'parallel', 'deeper'];
+        const questionTypes = ['application', 'insight', 'fact', 'mystery', 'discovery'];
+
+        parsedContent.relatedTopics.forEach((topic: { topic: string; type: string }, i: number) => {
+          if (!topic?.topic || !topic?.type || !topicTypes.includes(topic.type)) {
+            console.warn(`Fixing topic type at index ${i}`);
+            topic.type = topicTypes[i % topicTypes.length];
+          }
+        });
+
+        parsedContent.relatedQuestions.forEach((question: { 
+          question: string; 
+          type: string; 
+          context?: string 
+        }, i: number) => {
+          if (!question?.question || !question?.type || !questionTypes.includes(question.type)) {
+            console.warn(`Fixing question type at index ${i}`);
+            question.type = questionTypes[i % questionTypes.length];
+          }
+        });
+
+        return {
+          content: parsedContent.content,
+          relatedTopics: parsedContent.relatedTopics,
+          relatedQuestions: parsedContent.relatedQuestions
+        };
       } catch (error) {
-        if (error instanceof Error) {
-          throw new Error(`Invalid response format: ${error.message}`);
-        }
-        throw new Error('Invalid response format');
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error('Explore content error:', error.message);
+        console.error('Parse/validation error:', error);
         throw error;
       }
-      throw new Error('Unknown error occurred');
+    } catch (error) {
+      console.error('GPT service error:', error);
+      throw new Error(`Failed to get content: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
+  private validateQuestionFormat(question: Question): boolean {
+    if (!question?.text || typeof question.text !== 'string' || question.text.trim() === '') {
+      console.log('Invalid text');
+      return false;
+    }
+
+    if (!Array.isArray(question.options) || question.options.length !== 4) {
+      console.log('Invalid options array');
+      return false;
+    }
+
+    if (question.options.some((opt: string) => typeof opt !== 'string' || opt.trim() === '')) {
+      console.log('Invalid option content');
+      return false;
+    }
+
+    if (typeof question.correctAnswer !== 'number' || 
+        question.correctAnswer < 0 || 
+        question.correctAnswer > 3) {
+      console.log('Invalid correctAnswer');
+      return false;
+    }
+
+    if (!question.explanation || typeof question.explanation !== 'string') {
+      console.log('Invalid explanation');
+      return false;
+    }
+
+    return true;
+  }
+
   async getPlaygroundQuestion(topic: string, level: number, userContext: UserContext): Promise<Question> {
-    const systemPrompt = `You are an expert educator creating challenging, thought-provoking questions.
-      Target audience: ${userContext.age} year old
-      Current difficulty level: ${level}/10
-
-      QUESTION GUIDELINES:
-      1. Question Opening Styles (use a different one each time):
-         - Direct Scenario: "In a lab..."
-         - Observation: "A student noticed..."
-         - Problem: "While testing..."
-         - Real-world: "At a construction site..."
-         - Discovery: "Recent findings show..."
-         - Comparison: "Two systems..."
-         - Hypothetical: "Suppose..."
-         - Data: "Given these values..."
-         - Design: "An engineer needs..."
-         - Research: "Scientists found..."
-         - Application: "In industry..."
-         - Process: "During production..."
-         - Case: "A project team..."
-         - Innovation: "New research..."
-         - Nature: "In nature..."
-
-      2. Question Format:
-         - Keep questions short (25-40 words max)
-         - One clear scenario or context
-         - Single main concept being tested
-         - Direct and focused approach
-         - Clear problem statement
-         - No unnecessary details
-         - Avoid long setups
-         - Get to the point quickly
-
-      3. Cognitive Challenge (${userContext.age} years):
-         - Test understanding, not reading comprehension
-         - Focus on key concepts
-         - Clear but challenging
-         - Precise language
-         - No complex wording
-         - Straightforward scenarios
-         - Essential details only
-
-      4. Structure:
-         - Brief unique opening
-         - Quick context setup
-         - Clear question prompt
-         - Concise options
-         - Direct challenge
-         - No fluff or filler
-
-      Return a JSON object with EXACTLY this structure:
-      {
-        "text": "brief, focused question (25-40 words max)",
-        "options": [
-          "clear correct answer",
-          "plausible wrong answer",
-          "plausible wrong answer",
-          "plausible wrong answer"
-        ],
-        "correctAnswer": 0,
-        "explanation": "concise explanation of correct answer and why others are wrong",
-        "difficulty": ${level},
-        "topic": "${topic}",
-        "subtopic": "specific aspect tested",
-        "questionType": "opening style used",
-        "ageGroup": "${userContext.age} years"
-      }
-
-      IMPORTANT:
-      - Keep questions brief and focused
-      - No long-winded scenarios
-      - Get to the point quickly
-      - Use clear, direct language
-      - Avoid unnecessary context
-      - Make each question distinct
-      - Maintain high challenge level
-      - Focus on understanding, not reading`;
-
-    const userPrompt = `Create a concise, challenging question about "${topic}" that:
-      1. Uses minimal words (25-40 max)
-      2. Gets straight to the point
-      3. Tests deep understanding
-      4. Avoids unnecessary setup
-      5. Remains clear and focused`;
-
     try {
-      const content = await this.makeRequest(systemPrompt, userPrompt);
-      const parsedContent = JSON.parse(content);
-      
-      if (!this.validateQuestionFormat(parsedContent)) {
-        throw new Error('Invalid question format received');
+      let attempts = 0;
+      const maxAttempts = 3;
+      const maxTokens = 1000; // Reduced token limit for faster response
+
+      while (attempts < maxAttempts) {
+        try {
+          console.log(`Generating question attempt ${attempts + 1}`);
+          const content = await this.makeRequest(
+            this.getQuestionPrompt(topic, level, userContext),
+            `Create one multiple choice question about "${topic}"`,
+            maxTokens
+          );
+
+          const parsedContent = JSON.parse(content);
+          console.log('Parsed content:', parsedContent);
+
+          if (this.validateQuestionFormat(parsedContent)) {
+            return parsedContent;
+          }
+
+          console.warn(`Invalid format, attempt ${attempts + 1} of ${maxAttempts}`);
+        } catch (error) {
+          console.error(`Error in attempt ${attempts + 1}:`, error);
+        }
+        
+        attempts++;
       }
-      
-      return parsedContent;
+
+      throw new Error('Failed to generate valid question after multiple attempts');
     } catch (error) {
       console.error('Question generation error:', error);
       throw error;
     }
   }
 
-  private validateQuestionFormat(question: any): boolean {
-    return (
-      question.text &&
-      Array.isArray(question.options) &&
-      question.options.length === 4 &&
-      typeof question.correctAnswer === 'number' &&
-      question.correctAnswer >= 0 &&
-      question.correctAnswer < 4 &&
-      question.explanation &&
-      question.difficulty &&
-      question.topic &&
-      question.subtopic &&
-      question.questionType &&
-      question.ageGroup
-    );
-  }
+  private getQuestionPrompt(topic: string, level: number, userContext: UserContext): string {
+    return `You are an expert educator creating unique, engaging multiple-choice questions.
+      Target audience: ${userContext.age} year old student
+      Topic: "${topic}"
+      Difficulty level: ${level}/10
 
-  async getTestQuestions(topic: string, examType: 'JEE' | 'NEET'): Promise<Question[]> {
-    const systemPrompt = `You are a test generator for ${examType} exams. Return a JSON object with EXACTLY 20 multiple choice questions in the following format:
-    {
-      "questions": [
-        {
-          "text": "question text",
-          "options": ["option1", "option2", "option3", "option4"],
-          "correctAnswer": 0,
-          "explanation": "explanation text",
-          "difficulty": 5,
-          "topic": "${topic}",
-          "subtopic": "subtopic name",
-          "ageGroup": "High School"
-        }
-        // ... 19 more questions
-      ]
-    }
-    IMPORTANT: Generate EXACTLY 20 questions, no more, no less.`;
-    
-    const userPrompt = `Create 20 multiple choice questions about "${topic}" suitable for ${examType} exam. 
-      Ensure questions cover different aspects and difficulty levels.
-      Make sure to return EXACTLY 20 questions.
-      Questions should be challenging and exam-standard.`;
+      QUESTION REQUIREMENTS:
+      1. Create a unique, engaging question that:
+         - Is perfectly tailored for a ${userContext.age}-year-old's cognitive level
+         - Introduces new concepts or problem-solving approaches
+         - Covers aspects of ${topic} in an interesting way
+         - Uses real-world scenarios when possible
+         - Avoids repetitive formats
 
-    try {
-      console.log('GPT service making request with:', { topic, examType });
-      const content = await this.makeRequest(systemPrompt, userPrompt, 4000); // Increased max tokens
-      const parsed = JSON.parse(content);
-      
-      if (!parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length !== 20) {
-        console.error('Invalid test format or wrong number of questions:', parsed);
-        throw new Error(`Invalid test format received. Expected 20 questions, got ${parsed.questions?.length || 0}`);
+      2. Difficulty Guidelines:
+         - Make it slightly challenging but definitely solvable
+         - Match difficulty level ${level}/10
+         - Consider age-appropriate complexity
+         - Include thought-provoking elements
+         - Keep it engaging and interesting
+
+      3. Answer Choices:
+         - Create four well-randomized, diverse options
+         - Make wrong choices reasonable but clearly incorrect
+         - Avoid obviously wrong options
+         - Keep options distinct from each other
+         - Randomize correct answer placement
+
+      4. Question Styles (mix these up):
+         - Direct conceptual questions
+         - Scenario-based problems
+         - Real-world applications
+         - Fill-in-the-blank format
+         - Cause-and-effect relationships
+         - Compare-and-contrast setups
+
+      STRICT JSON FORMAT:
+      {
+        "text": "Your unique, engaging question here?",
+        "options": [
+          "Well-crafted first option",
+          "Thoughtful second option",
+          "Reasonable third option",
+          "Plausible fourth option"
+        ],
+        "correctAnswer": "MUST be a number 0-3, randomly placed",
+        "explanation": "Detailed, insightful explanation that:
+          - Clearly explains why the correct answer is right
+          - Addresses why other options are wrong
+          - Provides additional learning value
+          - Uses clear, age-appropriate language
+          - Connects to real-world understanding",
+        "difficulty": ${level},
+        "topic": "${topic}",
+        "subtopic": "specific aspect being tested",
+        "questionType": "direct | scenario | application | analysis",
+        "ageGroup": "${userContext.age}"
       }
+
+      CRITICAL RULES:
+      1. Question Quality:
+         - Must be fresh and unique
+         - Should be engaging and informative
+         - Must be age-appropriate
+         - Should encourage critical thinking
+         - Must be clearly worded
+
+      2. Answer Format:
+         - correctAnswer must be number 0-3
+         - All options must be unique
+         - No obviously wrong choices
+         - Randomize answer placement
+         - Keep options balanced in length
+
+      3. Explanation Quality:
+         - Must be clear and insightful
+         - Should teach even if wrong
+         - Include relevant examples
+         - Connect to real life
+         - Use simple language
+
+      Remember:
+      - Make each question feel fresh and new
+      - Keep difficulty appropriate for age ${userContext.age}
+      - Ensure educational value
+      - Use clear, engaging language
+      - Make it interesting and fun to learn`;
+    }
+  
+    async getTestQuestions(topic: string, examType: 'JEE' | 'NEET'): Promise<Question[]> {
+    try {
+      const systemPrompt = `Create a ${examType} exam test set about ${topic}.
+        Generate exactly 15 questions following this structure:
+        {
+          "questions": [
+            {
+              "text": "Clear question text",
+              "options": ["A", "B", "C", "D"],
+              "correctAnswer": 0,
+              "explanation": "Step-by-step solution",
+              "difficulty": 1,
+              "topic": "${topic}",
+              "subtopic": "specific concept",
+              "examType": "${examType}",
+              "questionType": "conceptual"
+            }
+          ]
+        }`;
+
+      console.log('Generating test questions...');
       
-      console.log('GPT service received response:', parsed.questions);
-      return parsed.questions;
+      const content = await this.makeRequest(
+        systemPrompt,
+        `Create 15 ${examType} questions about ${topic} (5 easy, 5 medium, 5 hard)`,
+        3000
+      );
+
+      console.log('Received response from API');
+
+      if (!content) {
+        console.error('Empty response from API');
+        throw new Error('No content received from API');
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(content);
+        console.log('Successfully parsed JSON response');
+      } catch (error) {
+        console.error('JSON parse error:', error);
+        console.log('Raw content:', content);
+        throw new Error('Failed to parse API response');
+      }
+
+      if (!parsed?.questions || !Array.isArray(parsed.questions)) {
+        console.error('Invalid response structure:', parsed);
+        throw new Error('Invalid response structure');
+      }
+
+      console.log(`Received ${parsed.questions.length} questions`);
+
+      const processedQuestions = parsed.questions.map((q: Partial<Question>, index: number) => {
+        const difficulty = Math.floor(index / 5) + 1;
+        return {
+          text: q.text || '',
+          options: Array.isArray(q.options) ? q.options : [],
+          correctAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 0,
+          explanation: q.explanation || '',
+          difficulty,
+          topic,
+          subtopic: q.subtopic || `${topic} Concept ${index + 1}`,
+          examType,
+          questionType: 'conceptual',
+          ageGroup: '16-18'
+        } as Question;
+      });
+
+      console.log('Processed questions:', processedQuestions.length);
+
+      const validQuestions = processedQuestions.filter((q: Question) => {
+        const isValid = this.validateQuestionFormat(q);
+        if (!isValid) {
+          console.log('Invalid question:', q);
+        }
+        return isValid;
+      });
+
+      console.log(`Valid questions: ${validQuestions.length}`);
+
+      if (validQuestions.length >= 5) {
+        const finalQuestions = validQuestions.slice(0, 15);
+        console.log(`Returning ${finalQuestions.length} questions`);
+        return finalQuestions;
+      }
+
+      throw new Error(`Only ${validQuestions.length} valid questions generated`);
     } catch (error) {
       console.error('Test generation error:', error);
-      throw error;
+      throw new Error(`Failed to generate test questions: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -422,7 +634,7 @@ export class GPTService {
       - Use platform-specific formats
       - Keep updating references
     `;
+    }
   }
-}
-
-export const gptService = new GPTService();
+  
+  export const gptService = new GPTService();

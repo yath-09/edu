@@ -19,8 +19,6 @@ interface Stats {
   streak: number;
   bestStreak: number;
   avgTime: number;
-  level: number;
-  questionsToNextLevel: number;
 }
 
 interface TopicProgress {
@@ -67,11 +65,9 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
     streak: 0,
     bestStreak: 0,
     avgTime: 0,
-    level: 1,
-    questionsToNextLevel: 5,
   });
 
-  const [topicProgress, setTopicProgress] = useState<TopicProgress>(() => {
+  const [_topicProgress, _setTopicProgress] = useState<TopicProgress>(() => {
     const saved = localStorage.getItem(`topic-progress-${query}`);
     return saved
       ? JSON.parse(saved)
@@ -107,8 +103,7 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
 
   const prefetchNextQuestion = async () => {
     try {
-      const adjustedLevel = Math.min(10, Math.max(1, stats.level));
-      const question = await getQuestion(query, adjustedLevel, userContext);
+      const question = await getQuestion(query, 1, userContext);
       setNextQuestion(question);
     } catch (error) {
       console.error("Error prefetching next question:", error);
@@ -126,39 +121,17 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
       return;
     }
 
-    if (nextQuestion) {
-      console.log('Using prefetched question:', nextQuestion);
-      setCurrentQuestion(nextQuestion);
-      setNextQuestion(null);
+    try {
+      const question = await getQuestion(query, 1, userContext);
+      setCurrentQuestion(question);
       setSelectedAnswer(null);
       setShowExplanation(false);
       setIsPaused(false);
       resetQuestionTimer();
       startQuestionTimer();
-
-      prefetchNextQuestion();
-    } else {
-      try {
-        const adjustedLevel = Math.min(10, Math.max(1, stats.level));
-        console.log('Fetching question for:', {
-          query,
-          level: adjustedLevel,
-          userContext
-        });
-        const question = await getQuestion(query, adjustedLevel, userContext);
-        console.log('Received question:', question);
-        setCurrentQuestion(question);
-        setSelectedAnswer(null);
-        setShowExplanation(false);
-        setIsPaused(false);
-        resetQuestionTimer();
-        startQuestionTimer();
-
-        prefetchNextQuestion();
-      } catch (error) {
-        console.error("Error fetching question:", error);
-        onError("Failed to generate question. Please try again.");
-      }
+    } catch (error) {
+      console.error("Error fetching question:", error);
+      onError("Failed to generate question. Please try again.");
     }
   };
 
@@ -173,30 +146,13 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
       setQuery(newQuery);
 
       if (!isSameTopic) {
-        setTopicProgress({
-          totalAttempts: 0,
-          successRate: 0,
-          averageTime: 0,
-          lastLevel: 1,
-          masteryScore: 0,
-        });
         setStats({
           questions: 0,
           accuracy: 0,
           streak: 0,
           bestStreak: 0,
           avgTime: 0,
-          level: 1,
-          questionsToNextLevel: 5,
         });
-      } else {
-        setStats((prev) => ({
-          ...prev,
-          questions: 0,
-          streak: 0,
-          level: topicProgress.lastLevel,
-          questionsToNextLevel: 5,
-        }));
       }
 
       setSessionStats({
@@ -224,20 +180,35 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
 
   const COUNTDOWN_DURATION = 5;
 
+  const getAccuracyFeedback = (accuracy: number, questions: number): string | null => {
+    if (questions % 5 !== 0) return null;
+    
+    if (accuracy >= 80) {
+      return "Excellent! 🌟 You're showing great understanding. Keep up the amazing work!";
+    } else if (accuracy >= 60) {
+      return "Good progress! 💪 You're getting better. Keep practicing to improve further!";
+    } else {
+      return "Keep going! 🎯 Practice makes perfect. Try reviewing the explanations carefully.";
+    }
+  };
+
   const updateStats = (isCorrect: boolean): void => {
     setStats((prev) => {
+      const newQuestions = prev.questions + 1;
+      const newAccuracy = (prev.accuracy * prev.questions + (isCorrect ? 100 : 0)) / newQuestions;
       const newStreak = isCorrect ? prev.streak + 1 : 0;
+      
+      const feedback = getAccuracyFeedback(newAccuracy, newQuestions);
+      if (feedback) {
+        onSuccess(feedback);
+      }
+
       return {
-        ...prev,
-        questions: prev.questions + 1,
-        accuracy:
-          (prev.accuracy * prev.questions + (isCorrect ? 100 : 0)) /
-          (prev.questions + 1),
+        questions: newQuestions,
+        accuracy: newAccuracy,
         streak: newStreak,
         bestStreak: Math.max(prev.bestStreak, newStreak),
-        avgTime:
-          (prev.avgTime * prev.questions + currentQuestionTime) /
-          (prev.questions + 1),
+        avgTime: (prev.avgTime * prev.questions + currentQuestionTime) / newQuestions,
       };
     });
   };
@@ -286,25 +257,21 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
     }
   }, [initialQuery]);
 
-  const LevelProgress = () => (
-    <div className="mb-4">
-      <div className="flex justify-between text-sm text-gray-400 mb-2">
-        <span>Level {stats.level}</span>
-        <span>
-          {stats.questionsToNextLevel} more correct answers to level{" "}
-          {stats.level + 1}
-        </span>
-      </div>
-      <div className="w-full bg-gray-700 rounded-full h-2">
-        <div
-          className="bg-primary rounded-full h-2 transition-all duration-300"
-          style={{
-            width: `${((5 - stats.questionsToNextLevel) / 5) * 100}%`,
-          }}
-        />
-      </div>
-    </div>
-  );
+  useEffect(() => {
+    if (_topicProgress) {
+      console.log('Topic progress updated:', _topicProgress);
+    }
+  }, [_topicProgress]);
+
+  useEffect(() => {
+    if (nextQuestion) {
+      prefetchNextQuestion();
+    }
+  }, [nextQuestion]);
+
+  const formatAccuracy = (accuracy: number): number => {
+    return Math.round(accuracy);
+  };
 
   if (isInitialLoading) {
     return (
@@ -329,9 +296,9 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
                 </p>
                 <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
                   <div className="bg-gray-800 p-4 rounded-lg">
-                    <p className="text-2xl font-bold text-green-500">
-                      {stats.accuracy}%
-                    </p>
+                    <div className="text-2xl font-bold text-primary">
+                      {formatAccuracy(stats.accuracy)}%
+                    </div>
                     <p className="text-sm text-gray-400">Accuracy</p>
                   </div>
                   <div className="bg-gray-800 p-4 rounded-lg">
@@ -422,9 +389,9 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
 
             <div className="card">
               <div className="flex items-center justify-between">
-                <span className="stats-value text-green-500">
-                  {stats.accuracy}%
-                </span>
+                <div className="text-2xl font-bold text-primary">
+                  {formatAccuracy(stats.accuracy)}%
+                </div>
                 <Trophy className="w-5 h-5 text-green-500" />
               </div>
               <span className="stats-label">Accuracy</span>
@@ -450,8 +417,6 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({
               <span className="stats-label">Time</span>
             </div>
           </div>
-
-          <LevelProgress />
 
           <div className="card space-y-6">
             <div className="flex justify-between items-start">
