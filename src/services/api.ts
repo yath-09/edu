@@ -9,10 +9,11 @@ const transformQuestion = (rawQuestion: Question): Question => ({
   options: rawQuestion.options,
   correctAnswer: rawQuestion.correctAnswer,
   explanation: rawQuestion.explanation,
-  difficulty: rawQuestion.difficulty || 5,
-  ageGroup: rawQuestion.ageGroup || "High School",
-  topic: rawQuestion.topic || "",
+  difficulty: rawQuestion.difficulty,
+  ageGroup: rawQuestion.ageGroup,
+  topic: rawQuestion.topic,
   subtopic: rawQuestion.subtopic || "",
+  questionType: rawQuestion.questionType || "conceptual"
 });
 
 export const api = {

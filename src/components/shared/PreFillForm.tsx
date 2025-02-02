@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
+import { PreFillFormProps, UserContext } from '../../types';
 
-interface PreFillFormProps {
-  onSubmit: (context: { age: number }) => void;
-}
-
-export const PreFillForm = ({ onSubmit }: PreFillFormProps) => {
+export const PreFillForm: React.FC<PreFillFormProps> = ({ onSubmit }) => {
   const [age, setAge] = useState<number>(15);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ age });
+    const userContext: UserContext = {
+      age: age,
+      studyingFor: 'General Learning' // Default value
+    };
+    onSubmit(userContext);
   };
 
   return (

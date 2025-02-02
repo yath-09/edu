@@ -7,17 +7,22 @@ import rehypeKatex from 'rehype-katex';
 import { SearchBar } from '../shared/SearchBar';
 import { GPTService } from '../../services/gptService';
 import { UserContext, MarkdownComponentProps } from '../../types';
+import { RelatedTopics } from './RelatedTopics';
+import { RelatedQuestions } from './RelatedQuestions';
+import { LoadingAnimation } from '../shared/LoadingAnimation';
 
 interface Message {
   type: 'user' | 'ai';
   content?: string;
-  parts?: string[];
-  relatedQueries?: Array<{
-    query: string;
+  relatedTopics?: Array<{
+    topic: string;
+    type: string;
+  }>;
+  relatedQuestions?: Array<{
+    question: string;
     type: string;
     context: string;
   }>;
-  currentPartIndex?: number;
 }
 
 interface ExploreViewProps {
@@ -26,13 +31,6 @@ interface ExploreViewProps {
   onSuccess: (message: string) => void;
   onRelatedQueryClick?: (query: string) => void;
   userContext: UserContext;
-}
-
-interface NavigationProps {
-  onPrevious: () => void;
-  onNext: () => void;
-  currentIndex: number;
-  totalParts: number;
 }
 
 const ProfessorAvatar = () => (
@@ -98,90 +96,7 @@ const MarkdownComponents: Record<string, React.FC<MarkdownComponentProps>> = {
   ),
 };
 
-const Navigation: React.FC<NavigationProps> = ({ 
-  onPrevious, 
-  onNext, 
-  currentIndex, 
-  totalParts 
-}) => (
-  <div className="mt-4 mb-2">
-    {/* Mobile Navigation - Always visible on mobile */}
-    <div className="md:hidden flex flex-col items-center gap-2">
-      <div className="flex items-center justify-between w-full px-4">
-        <button
-          onClick={onPrevious}
-          disabled={currentIndex === 0}
-          className="text-sm text-gray-400 hover:text-primary disabled:opacity-50 
-            disabled:cursor-not-allowed transition-colors"
-        >
-          ← Previous
-        </button>
-        <span className="text-xs text-gray-500">
-          Part {currentIndex + 1} of {totalParts}
-        </span>
-        <button
-          onClick={onNext}
-          disabled={currentIndex === totalParts - 1}
-          className="text-sm text-gray-400 hover:text-primary disabled:opacity-50 
-            disabled:cursor-not-allowed transition-colors"
-        >
-          Next →
-        </button>
-      </div>
-      <div className="flex items-center gap-1">
-        {Array.from({ length: totalParts }).map((_, idx) => (
-          <div
-            key={idx}
-            className={`w-1 h-1 rounded-full transition-all duration-300 ${
-              idx === currentIndex 
-                ? 'bg-primary w-2' 
-                : 'bg-gray-600'
-            }`}
-          />
-        ))}
-      </div>
-    </div>
-
-    {/* Desktop Navigation - Original design */}
-    <div className="hidden md:flex flex-col items-center gap-2">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onPrevious}
-          disabled={currentIndex === 0}
-          className="text-sm text-gray-400 hover:text-primary disabled:opacity-50 
-            disabled:cursor-not-allowed transition-colors px-2"
-        >
-          ← Previous
-        </button>
-        <div className="flex items-center gap-1.5">
-          {Array.from({ length: totalParts }).map((_, idx) => (
-            <div
-              key={idx}
-              className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                idx === currentIndex 
-                  ? 'bg-primary w-3' 
-                  : 'bg-gray-600'
-              }`}
-            />
-          ))}
-        </div>
-        <button
-          onClick={onNext}
-          disabled={currentIndex === totalParts - 1}
-          className="text-sm text-gray-400 hover:text-primary disabled:opacity-50 
-            disabled:cursor-not-allowed transition-colors px-2"
-        >
-          Next →
-        </button>
-      </div>
-      <span className="text-xs text-gray-500">
-        Part {currentIndex + 1} of {totalParts}
-      </span>
-    </div>
-  </div>
-);
-
-const RelatedQueries: React.FC<{
+export const RelatedQueries: React.FC<{
   queries: Array<{
     query: string;
     type: string;
@@ -252,6 +167,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   const gptService = useMemo(() => new GPTService(), []);
   const latestMessageRef = useRef<HTMLDivElement>(null);
   const [isFirstQuery, setIsFirstQuery] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const scrollToLatest = useCallback(() => {
     if (!isFirstQuery) {
@@ -266,18 +182,33 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
   const handleSearch = useCallback(async (query: string) => {
     try {
-      setMessages(prev => [...prev, { type: 'user', content: query }]);
+      setIsLoading(true);
+      setMessages(prev => [...prev, { 
+        type: 'user', 
+        content: query 
+      }]);
+      setMessages(prev => [...prev, { 
+        type: 'ai', 
+        content: ''
+      }]);
       setShowInitialSearch(false);
       setSearchKey(prev => prev + 1);
 
       const response = await gptService.getExploreContent(query, userContext);
       
-      setMessages(prev => [...prev, { 
-        type: 'ai', 
-        parts: response.parts,
-        relatedQueries: response.relatedQueries,
-        currentPartIndex: 0
-      }]);
+      if (!response || !response.content) {
+        throw new Error('Invalid response received');
+      }
+
+      setMessages(prev => [
+        ...prev.slice(0, -1),
+        { 
+          type: 'ai', 
+          content: response.content,
+          relatedTopics: response.relatedTopics,
+          relatedQuestions: response.relatedQuestions
+        }
+      ]);
       
       if (isFirstQuery) {
         setIsFirstQuery(false);
@@ -287,8 +218,10 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
       
       onSuccess('Content loaded successfully');
     } catch (error) {
-      console.error('Full error details:', error);
-      onError('Failed to load content');
+      console.error('Search error:', error);
+      onError(error instanceof Error ? error.message : 'Failed to load content');
+    } finally {
+      setIsLoading(false);
     }
   }, [gptService, onError, onSuccess, userContext, scrollToLatest, isFirstQuery]);
 
@@ -298,47 +231,6 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
     }
     handleSearch(query);
   }, [onRelatedQueryClick, handleSearch]);
-
-  const handleNextPart = useCallback(() => {
-    setMessages(prev => {
-      const lastMessageIndex = prev.length - 1;
-      const lastMessage = prev[lastMessageIndex];
-      
-      if (lastMessage?.type === 'ai' && 
-          lastMessage.parts && 
-          lastMessage.currentPartIndex !== undefined && 
-          lastMessage.currentPartIndex < lastMessage.parts.length - 1) {
-        
-        const newMessages = [...prev];
-        newMessages[lastMessageIndex] = {
-          ...lastMessage,
-          currentPartIndex: lastMessage.currentPartIndex + 1
-        };
-        return newMessages;
-      }
-      return prev;
-    });
-  }, []);
-
-  const handlePreviousPart = useCallback(() => {
-    setMessages(prev => {
-      const lastMessageIndex = prev.length - 1;
-      const lastMessage = prev[lastMessageIndex];
-      
-      if (lastMessage?.type === 'ai' && 
-          lastMessage.currentPartIndex !== undefined && 
-          lastMessage.currentPartIndex > 0) {
-        
-        const newMessages = [...prev];
-        newMessages[lastMessageIndex] = {
-          ...lastMessage,
-          currentPartIndex: lastMessage.currentPartIndex - 1
-        };
-        return newMessages;
-      }
-      return prev;
-    });
-  }, []);
 
   useEffect(() => {
     if (initialQuery) {
@@ -391,32 +283,33 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                     <div className="ai-message flex items-start gap-3">
                       <ProfessorAvatar />
                       <div className="flex-1">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm, remarkMath]}
-                          rehypePlugins={[rehypeKatex]}
-                          components={MarkdownComponents}
-                        >
-                          {message.parts && message.currentPartIndex !== undefined
-                            ? String(message.parts[message.currentPartIndex])
-                            : typeof message.content === 'object'
-                              ? JSON.stringify(message.content)
-                              : message.content || ''}
-                        </ReactMarkdown>
+                        {isLoading && !message.content ? (
+                          <LoadingAnimation />
+                        ) : (
+                          <>
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm, remarkMath]}
+                              rehypePlugins={[rehypeKatex]}
+                              components={MarkdownComponents}
+                              className="whitespace-pre-wrap"
+                            >
+                              {message.content || ''}
+                            </ReactMarkdown>
 
-                        {message.parts && message.parts.length > 1 && (
-                          <Navigation
-                            onPrevious={handlePreviousPart}
-                            onNext={handleNextPart}
-                            currentIndex={message.currentPartIndex || 0}
-                            totalParts={message.parts.length}
-                          />
-                        )}
+                            {message.relatedTopics && message.relatedTopics.length > 0 && (
+                              <RelatedTopics
+                                topics={message.relatedTopics}
+                                onTopicClick={handleRelatedQueryClick}
+                              />
+                            )}
 
-                        {message.relatedQueries && message.relatedQueries.length > 0 && (
-                          <RelatedQueries
-                            queries={message.relatedQueries}
-                            onQueryClick={handleRelatedQueryClick}
-                          />
+                            {message.relatedQuestions && message.relatedQuestions.length > 0 && (
+                              <RelatedQuestions
+                                questions={message.relatedQuestions}
+                                onQuestionClick={handleRelatedQueryClick}
+                              />
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
