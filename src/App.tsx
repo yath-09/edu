@@ -8,6 +8,7 @@ import { PlaygroundView } from './components/Playground/PlaygroundView';
 import { PreFillForm } from './components/shared/PreFillForm';
 import { UserContext } from './types';
 import { Toaster, toast } from 'react-hot-toast';
+import { GoogleTagManager } from './components/shared/GoogleTagManager';
 
 function App() {
   const [userContext, setUserContext] = useState<UserContext | null>(null);
@@ -30,6 +31,7 @@ function App() {
 
   return (
     <Router>
+      <GoogleTagManager />
       <div className="min-h-screen bg-background text-white">
         <Toaster position="top-right" />
         <Layout>

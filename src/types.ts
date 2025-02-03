@@ -37,4 +37,10 @@ export interface ExploreResponse {
 
 export interface PreFillFormProps {
   onSubmit: (context: UserContext) => void;
+}
+
+declare global {
+  interface Window {
+    dataLayer: any[];
+  }
 } 

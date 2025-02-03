@@ -14,7 +14,7 @@ import OpenAI from 'openai';
   private async makeRequest(systemPrompt: string, userPrompt: string, maxTokens: number = 2000) {
     try {
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo-1106',
+        model: 'gpt-3.5-turbo',
         messages: [
           { 
             role: 'system', 
@@ -616,7 +616,7 @@ import OpenAI from 'openai';
           Follow the format and length limits strictly.`;
 
         const stream = await this.openai.chat.completions.create({
-          model: 'gpt-3.5-turbo-1106',
+          model: 'gpt-3.5-turbo',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
