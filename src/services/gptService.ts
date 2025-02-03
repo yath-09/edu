@@ -39,7 +39,7 @@ import OpenAI from 'openai';
 
   async getExploreContent(query: string, userContext: UserContext): Promise<ExploreResponse> {
     try {
-      const systemPrompt = `You are a Gen-Z tutor who explains complex topics concisely.
+      const systemPrompt = `You are a Gen-Z tutor who explains complex topics concisely considering you are teaching someone with a low IQ.
         First, identify the domain of the topic from these categories:
         - SCIENCE: Physics, Chemistry, Biology
         - MATHEMATICS: Algebra, Calculus, Geometry
@@ -56,9 +56,9 @@ import OpenAI from 'openai';
         {
           "domain": "identified domain",
           "content": {
-            "paragraph1": "Core concept in around 30-40 words - clear, simple definition",
-            "paragraph2": "Key points in around 30-40 words - main ideas and examples",
-            "paragraph3": "Real applications in around 30-40 words - practical uses and relevance"
+            "paragraph1": "Core concept in around 20-30 words - clear, simple, story-telling based introduction and definition",
+            "paragraph2": "talk more detail about it in around 20-30 words - main ideas and examples",
+            "paragraph3": "Real world applications in around 20-40 words - practical uses and relevance"
           },
           "relatedTopics": [
             {
@@ -117,7 +117,7 @@ import OpenAI from 'openai';
         }
 
         IMPORTANT RULES:
-        - Each paragraph MUST be exactly 30 words
+        - Each paragraph MUST be around 20-30 words
         - Use simple, clear language
         - Focus on key information only
         - No repetition between paragraphs
@@ -142,10 +142,10 @@ import OpenAI from 'openai';
         - Spark imagination
         - Make reader think "I never thought about that!"`;
 
-      const userPrompt = `Explain "${query}" in exactly three 30-word paragraphs:
-        1. Basic definition
-        2. Key points
-        3. Real-world applications
+      const userPrompt = `Explain "${query}" in approximately three 20-30 word paragraphs:
+        1. Basic definition without using words like imagine
+        2. more details
+        3. Real-world application examples without using the word real world application
         Make it engaging for someone aged ${userContext.age}.`;
 
         const content = await this.makeRequest(systemPrompt, userPrompt);
@@ -195,21 +195,30 @@ import OpenAI from 'openai';
   }
 
   private validateQuestionFormat(question: Question): boolean {
-    // Basic validation
-    if (!question.text?.trim()) return false;
-    if (!Array.isArray(question.options) || question.options.length !== 4) return false;
-    if (question.options.some(opt => !opt?.trim())) return false;
-    if (typeof question.correctAnswer !== 'number' || 
-        question.correctAnswer < 0 || 
-        question.correctAnswer > 3) return false;
-    if (!question.explanation?.trim()) return false;
+    try {
+      // Basic validation
+      if (!question.text?.trim()) return false;
+      if (!Array.isArray(question.options) || question.options.length !== 4) return false;
+      if (question.options.some(opt => !opt?.trim())) return false;
+      if (typeof question.correctAnswer !== 'number' || 
+          question.correctAnswer < 0 || 
+          question.correctAnswer > 3) return false;
 
-    // Additional validation
-    if (question.text.length < 10) return false;  // Too short
-    if (question.options.length !== new Set(question.options).size) return false; // Duplicates
-    if (question.explanation.length < 20) return false; // Too short explanation
+      // Explanation validation
+      if (!question.explanation?.correct?.trim() || 
+          !question.explanation?.key_point?.trim()) return false;
 
-    return true;
+      // Additional validation
+      if (question.text.length < 10) return false;  // Too short
+      if (question.options.length !== new Set(question.options).size) return false; // Duplicates
+      if (question.explanation.correct.length < 5 || 
+          question.explanation.key_point.length < 5) return false; // Too short explanations
+
+      return true;
+    } catch (error) {
+      console.error('Validation error:', error);
+      return false;
+    }
   }
 
   async getPlaygroundQuestion(topic: string, level: number, userContext: UserContext): Promise<Question> {
@@ -233,7 +242,10 @@ import OpenAI from 'openai';
           "text": "question text here",
           "options": ["option A", "option B", "option C", "option D"],
           "correctAnswer": RANDOMLY_PICKED_NUMBER_0_TO_3,
-          "explanation": "explanation here",
+          "explanation": {
+            "correct": "Brief explanation of why the correct answer is right (max 15 words)",
+            "key_point": "One key concept to remember (max 10 words)"
+          },
           "difficulty": ${level},
           "topic": "${topic}",
           "subtopic": "specific subtopic",
@@ -275,7 +287,15 @@ import OpenAI from 'openai';
         - Vary difficulty within level ${level}
         - Mix theoretical and practical aspects
         - Use different companies/technologies as examples
-        - Include various ${topic} scenarios`;
+        - Include various ${topic} scenarios
+
+        EXPLANATION GUIDELINES:
+        - Keep explanations extremely concise and clear
+        - Focus on the most important point only
+        - Use simple language
+        - Highlight the key concept
+        - No redundant information
+        - Maximum 25 words total`;
 
       const userPrompt = `Create a completely unique ${level}/10 difficulty question about ${topic}.
         Focus on ${selectedAspect.replace('_', ' ')}.
@@ -305,7 +325,10 @@ import OpenAI from 'openai';
         text: shuffled.text || '',
         options: shuffled.options,
         correctAnswer: shuffled.correctAnswer,
-        explanation: shuffled.explanation || '',
+        explanation: {
+          correct: shuffled.explanation?.correct || 'Correct answer explanation',
+          key_point: shuffled.explanation?.key_point || 'Key learning point'
+        },
         difficulty: level,
         topic: topic,
         subtopic: parsedContent.subtopic || topic,
@@ -527,6 +550,163 @@ import OpenAI from 'openai';
       - Use platform-specific formats
       - Keep updating references
     `;
+  }
+
+  async streamExploreContent(
+    query: string, 
+    onChunk: (content: { text?: string, topics?: any[], questions?: any[] }) => void
+  ): Promise<void> {
+    const maxRetries = 3;
+    let retryCount = 0;
+
+    while (retryCount < maxRetries) {
+      try {
+        const systemPrompt = `You are a Gen-Z tutor who explains complex topics concisely.
+          First provide the explanation in plain text, then provide related content in a STRICT single-line JSON format.
+          
+          Structure your response exactly like this:
+          
+          <paragraph 1>
+
+          <paragraph 2>
+
+          <paragraph 3>
+
+          ---
+          {"topics":[{"name":"Topic","type":"prerequisite","detail":"Why"}],"questions":[{"text":"Q?","type":"curiosity","detail":"Context"}]}
+
+          RULES:
+          - STRICT LENGTH LIMITS:
+            * Total explanation must be 60-80 words maximum
+            * Each paragraph around 20-25 words each.
+            * Related questions maximum 12 words each
+            * Topic details 1-2 words each
+          - Keep paragraphs clear and simple
+          - Third paragraph should directly state applications and facts without phrases like "In real-world applications"
+          - Use "---" as separator
+          - JSON must be in a single line
+          - No line breaks in JSON
+          - MUST provide EXACTLY 5 related topics and 5 questions
+          - Related questions must be:
+            * Curiosity-driven and thought-provoking
+            * STRICTLY 8-12 words maximum
+            * Focus on mind-blowing facts or surprising connections
+            * Make users think "Wow, I never thought about that!"
+          - Related topics must be:
+            * Directly relevant to understanding the main topic
+            * Mix of prerequisites and advanced concepts
+            * Brief, clear explanation of importance
+          - Topic types: prerequisite, extension, application, parallel, deeper
+          - Question types: curiosity, mechanism, causality, innovation, insight`;
+
+        const userPrompt = `Explain "${query}" in three very concise paragraphs (total 50-60 words) in genz style:
+          1. Basic definition (15-20 words)
+          2. Key details (15-20 words)
+          3. Direct applications and facts (15-20 words)
+
+          Then provide EXACTLY:
+          - 5 related topics that help understand ${query} better
+          - 5 mind-blowing questions (8-12 words each) that spark curiosity
+          
+          Follow the format and length limits strictly.`;
+
+        const stream = await this.openai.chat.completions.create({
+          model: 'gpt-3.5-turbo-1106',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          stream: true,
+          temperature: 0.7
+        });
+
+        let mainContent = '';
+        let jsonContent = '';
+        let isJsonSection = false;
+        
+        for await (const chunk of stream) {
+          const content = chunk.choices[0]?.delta?.content || '';
+          
+          if (content.includes('---')) {
+            isJsonSection = true;
+            jsonContent = '';
+            continue;
+          }
+
+          if (isJsonSection) {
+            jsonContent += content;
+            try {
+              // Clean and validate JSON string
+              let cleanJson = jsonContent.trim()
+                .replace(/\s+/g, ' ')
+                .replace(/,\s*([}\]])/g, '$1') // Remove trailing commas
+                .replace(/([{,])\s*}/g, '}')   // Fix empty objects
+                .replace(/\]\s*,\s*}/g, ']}'); // Fix array endings
+
+              if (cleanJson.startsWith('{') && cleanJson.endsWith('}')) {
+                try {
+                  const parsed = JSON.parse(cleanJson);
+                  
+                  // Validate and format topics
+                  const formattedTopics = Array.isArray(parsed.topics) 
+                    ? parsed.topics.map((t: any) => ({
+                        topic: String(t.name || ''),
+                        type: String(t.type || 'prerequisite'),
+                        reason: String(t.detail || '')
+                      })).filter((t: { topic: string }) => t.topic)
+                    : [];
+
+                  // Validate and format questions
+                  const formattedQuestions = Array.isArray(parsed.questions)
+                    ? parsed.questions.map((q: any) => ({
+                        question: String(q.text || ''),
+                        type: String(q.type || 'curiosity'),
+                        context: String(q.detail || '')
+                      })).filter((q: { question: string }) => q.question)
+                    : [];
+
+                  // Only send update if we have valid content
+                  if (formattedTopics.length > 0 || formattedQuestions.length > 0) {
+                    onChunk({
+                      text: mainContent.trim(),
+                      topics: formattedTopics.length > 0 ? formattedTopics : undefined,
+                      questions: formattedQuestions.length > 0 ? formattedQuestions : undefined
+                    });
+                  } else {
+                    onChunk({ text: mainContent.trim() });
+                  }
+                } catch (parseError) {
+                  // If JSON parsing fails, just show the text content
+                  console.debug('Partial JSON parse error:', parseError);
+                  onChunk({ text: mainContent.trim() });
+                }
+              }
+            } catch (error) {
+              // Log error but don't break the UI
+              console.debug('JSON cleaning error:', error);
+              onChunk({ text: mainContent.trim() });
+            }
+          } else {
+            mainContent += content;
+            onChunk({ text: mainContent.trim() });
+          }
+        }
+
+        return;
+
+      } catch (error) {
+        retryCount++;
+        console.error(`API attempt ${retryCount} failed:`, error);
+
+        if (retryCount === maxRetries) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          throw new Error(`Failed to stream content after ${maxRetries} attempts. ${errorMessage}`);
+        }
+
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+      }
+    }
     }
   }
   

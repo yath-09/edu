@@ -6,7 +6,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { SearchBar } from '../shared/SearchBar';
 import { GPTService } from '../../services/gptService';
-import { UserContext, MarkdownComponentProps } from '../../types';
+import { MarkdownComponentProps } from '../../types';
 import { RelatedTopics } from './RelatedTopics';
 import { RelatedQuestions } from './RelatedQuestions';
 import { LoadingAnimation } from '../shared/LoadingAnimation';
@@ -14,11 +14,26 @@ import { LoadingAnimation } from '../shared/LoadingAnimation';
 interface Message {
   type: 'user' | 'ai';
   content?: string;
-  relatedTopics?: Array<{
+  topics?: Array<{
     topic: string;
     type: string;
+    reason: string;
   }>;
-  relatedQuestions?: Array<{
+  questions?: Array<{
+    question: string;
+    type: string;
+    context: string;
+  }>;
+}
+
+interface StreamChunk {
+  text?: string;
+  topics?: Array<{
+    topic: string;
+    type: string;
+    reason: string;
+  }>;
+  questions?: Array<{
     question: string;
     type: string;
     context: string;
@@ -28,23 +43,8 @@ interface Message {
 interface ExploreViewProps {
   initialQuery?: string;
   onError: (message: string) => void;
-  onSuccess: (message: string) => void;
   onRelatedQueryClick?: (query: string) => void;
-  userContext: UserContext;
 }
-
-const ProfessorAvatar = () => (
-  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
-    <path d="M9 10h6v2H9zm3-7L8 7l4 4 4-4z"/>
-  </svg>
-);
-
-const UserAvatar = () => (
-  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
-  </svg>
-);
 
 const MarkdownComponents: Record<string, React.FC<MarkdownComponentProps>> = {
   h1: ({ children, ...props }) => (
@@ -161,84 +161,72 @@ export const RelatedQueries: React.FC<{
 
 export const ExploreView: React.FC<ExploreViewProps> = ({ 
   initialQuery, 
-  onError, 
-  onSuccess,
+  onError,
   onRelatedQueryClick,
-  userContext 
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [showInitialSearch, setShowInitialSearch] = useState(true);
-  const [searchKey, setSearchKey] = useState(0);
+  const [showInitialSearch, setShowInitialSearch] = useState(!initialQuery);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const gptService = useMemo(() => new GPTService(), []);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const scrollIntoView = () => {
-    const scrollHeight = document.documentElement.scrollHeight;
-    const windowHeight = window.innerHeight;
-    const scrollPosition = scrollHeight - windowHeight - 200; // 200px offset for the search bar
+  // Add a ref for the messages container
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-    window.scrollTo({
-      top: Math.max(0, scrollPosition),
-      behavior: 'smooth'
-    });
-  };
-
+  // Scroll to top whenever messages change
   useEffect(() => {
     if (messages.length > 0) {
-      // Wait for content to render
-      const timer = setTimeout(() => {
-        scrollIntoView();
-      }, 200); // Slightly longer delay to ensure content is rendered
-      return () => clearTimeout(timer);
+      window.scrollTo({
+        top: 0,
+        behavior: 'instant'
+      });
     }
-  }, [messages]);
+  }, [messages.length]);
+
+  // Add effect to listen for reset
+  useEffect(() => {
+    const handleReset = () => {
+      setMessages([]);
+      setShowInitialSearch(true);
+    };
+
+    window.addEventListener('resetExplore', handleReset);
+    return () => window.removeEventListener('resetExplore', handleReset);
+  }, []);
 
   const handleSearch = useCallback(async (query: string) => {
     try {
       setIsLoading(true);
       
-      // Add user message
-      setMessages(prev => [...prev, { 
-        type: 'user', 
-        content: query 
-      }]);
-
-      // Add loading message
-      setMessages(prev => [...prev, { 
-        type: 'ai', 
-        content: '' 
-      }]);
+      setMessages([
+        { type: 'user', content: query },
+        { type: 'ai', content: '' }
+      ]);
 
       setShowInitialSearch(false);
-      setSearchKey(prev => prev + 1);
 
-      const response = await gptService.getExploreContent(query, userContext);
-      
-      if (!response || !response.content) {
-        throw new Error('Invalid response received');
-      }
-
-      // Update with actual response
-      setMessages(prev => [
-        ...prev.slice(0, -1),
-        { 
-          type: 'ai', 
-          content: response.content,
-          relatedTopics: response.relatedTopics,
-          relatedQuestions: response.relatedQuestions
+      await gptService.streamExploreContent(
+        query,
+        (chunk: StreamChunk) => {
+          setMessages([
+            { type: 'user', content: query },
+            {
+              type: 'ai',
+              content: chunk.text,
+              topics: chunk.topics,
+              questions: chunk.questions
+            }
+          ]);
         }
-      ]);
-      
-      onSuccess('Content loaded successfully');
+      );
     } catch (error) {
       console.error('Search error:', error);
       onError(error instanceof Error ? error.message : 'Failed to load content');
     } finally {
       setIsLoading(false);
     }
-  }, [gptService, onError, onSuccess, userContext]);
+  }, [gptService, onError]);
 
   const handleRelatedQueryClick = useCallback((query: string) => {
     if (onRelatedQueryClick) {
@@ -256,84 +244,109 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   return (
     <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col" ref={containerRef}>
       {showInitialSearch ? (
-        <div className="flex-1 flex items-center pt-16 sm:pt-0">
-          <div className="w-full px-4 sm:max-w-2xl lg:max-w-3xl mx-auto">
-            <div className="text-center space-y-4 mb-8">
-              <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r 
-                from-primary to-purple-500 bg-clip-text text-transparent">
-                {/* ... */}
-              </h1>
-            </div>
+        <div className="flex-1 flex flex-col items-center justify-center px-4">
+          <h1 className="text-2xl sm:text-3xl font-bold text-center mb-4">
+            What do you want to explore?
+          </h1>
+          
+          <div className="w-full max-w-xl mx-auto">
             <SearchBar
-              key="initial-search"
-              onSearch={handleSearch} 
+              onSearch={handleSearch}
               placeholder="Enter what you want to explore..."
               centered={true}
-              title="What do you want to explore?"
-              suggestions={[
-                { text: 'Quantum Physics', icon: '⚛️' },
-                { text: 'Machine Learning', icon: '🤖' },
-                { text: 'World History', icon: '🌍' }
-              ]}
-              className="bg-gray-900/80 backdrop-blur-lg"
+              className="bg-gray-900/80"
             />
+            
+            <p className="text-sm text-gray-400 text-center mt-1">Press Enter to search</p>
+            
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+              <span className="text-sm text-gray-400">Try:</span>
+              <button
+                onClick={() => handleSearch("Quantum Physics")}
+                className="px-3 py-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 
+                  border border-purple-500/30 transition-colors text-xs sm:text-sm text-purple-300"
+              >
+                ⚛️ Quantum Physics
+              </button>
+              <button
+                onClick={() => handleSearch("Machine Learning")}
+                className="px-3 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 
+                  border border-blue-500/30 transition-colors text-xs sm:text-sm text-blue-300"
+              >
+                🤖 Machine Learning
+              </button>
+              <button
+                onClick={() => handleSearch("World History")}
+                className="px-3 py-1.5 rounded-lg bg-green-500/20 hover:bg-green-500/30 
+                  border border-green-500/30 transition-colors text-xs sm:text-sm text-green-300"
+              >
+                🌍 World History
+              </button>
+            </div>
           </div>
         </div>
       ) : (
-        <div className="relative flex flex-col w-full">
+        <div ref={messagesContainerRef} className="relative flex flex-col w-full">
           <div className="space-y-2 pb-16">
-            {messages.map((message, index) => (
+        {messages.map((message, index) => (
               <div 
                 key={index} 
                 className="px-2 sm:px-4 w-full mx-auto"
               >
-                <div className="max-w-3xl mx-auto w-full">
-                  <div className="flex items-start gap-2 sm:gap-3">
-                    {message.type === 'user' ? (
-                      <div className="user-message flex items-start gap-2 sm:gap-3 w-full">
-                        <UserAvatar />
-                        <div className="flex-1 text-sm sm:text-base min-w-0">{message.content}</div>
+                <div className="max-w-3xl mx-auto">
+                  {message.type === 'user' ? (
+                    <div className="w-full">
+                      <div className="flex-1 text-base sm:text-lg font-semibold text-gray-100">
+                      {message.content}
                       </div>
-                    ) : (
-                      <div className="ai-message flex items-start gap-2 sm:gap-3 w-full">
-                        <ProfessorAvatar />
-                        <div className="flex-1 min-w-0">
-                          {isLoading && !message.content ? (
+                    </div>
+                  ) : (
+                    <div className="w-full">
+                      <div className="flex-1 min-w-0">
+                        {!message.content && isLoading ? (
+                          <div className="flex items-center space-x-2 py-2">
                             <LoadingAnimation />
-                          ) : (
-                            <>
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm, remarkMath]}
-                                rehypePlugins={[rehypeKatex]}
-                                components={MarkdownComponents}
-                                className="whitespace-pre-wrap break-words space-y-1.5"
-                              >
-                                {message.content || ''}
-                              </ReactMarkdown>
+                            <span className="text-sm text-gray-400">Thinking...</span>
+                          </div>
+                        ) : (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                            components={{
+                              ...MarkdownComponents,
+                              p: ({ children }) => (
+                                <p className="text-sm sm:text-base text-gray-300 my-1.5 leading-relaxed 
+                                  break-words">
+                                  {children}
+                                </p>
+                              ),
+                            }}
+                            className="whitespace-pre-wrap break-words space-y-1.5"
+                          >
+                            {message.content || ''}
+                      </ReactMarkdown>
+                        )}
 
-                              {message.relatedTopics && message.relatedTopics.length > 0 && (
-                                <div className="mt-2 -mx-2 sm:mx-0">
-                                  <RelatedTopics
-                                    topics={message.relatedTopics}
-                                    onTopicClick={handleRelatedQueryClick}
-                                  />
-                                </div>
-                              )}
+                        {message.topics && message.topics.length > 0 && (
+                          <div className="mt-3">
+                            <RelatedTopics
+                              topics={message.topics}
+                              onTopicClick={handleRelatedQueryClick}
+                            />
+                          </div>
+                        )}
 
-                              {message.relatedQuestions && message.relatedQuestions.length > 0 && (
-                                <div className="mt-2 -mx-2 sm:mx-0">
-                                  <RelatedQuestions
-                                    questions={message.relatedQuestions}
-                                    onQuestionClick={handleRelatedQueryClick}
-                                  />
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
+                        {message.questions && message.questions.length > 0 && (
+                          <div className="mt-3">
+                            <RelatedQuestions
+                              questions={message.questions}
+                              onQuestionClick={handleRelatedQueryClick}
+                            />
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -344,16 +357,14 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
             />
           </div>
 
-          <div className="fixed bottom-0 left-0 right-0 
-            bg-gradient-to-t from-background via-background to-transparent 
-            pb-2 pt-3">
+          <div className="fixed bottom-12 left-0 right-0 bg-gradient-to-t from-background 
+            via-background to-transparent pb-1 pt-2 z-50">
             <div className="w-full px-2 sm:px-4 max-w-3xl mx-auto">
               <SearchBar
-                key={`follow-up-${searchKey}`}
                 onSearch={handleSearch} 
                 placeholder="Ask a follow-up question..."
                 centered={false}
-                className="bg-gray-900/80 backdrop-blur-lg border border-gray-700/50"
+                className="bg-gray-900/80 backdrop-blur-lg border border-gray-700/50 h-10"
               />
             </div>
           </div>

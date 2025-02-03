@@ -12,7 +12,10 @@ export interface Question {
   text: string;
   options: string[];
   correctAnswer: number;
-  explanation: string;
+  explanation: {
+    correct: string;
+    key_point: string;
+  };
   difficulty: number;
   topic: string;
   subtopic: string;

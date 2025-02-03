@@ -39,8 +39,6 @@ function App() {
               element={
                 <ExploreView 
                   onError={handleError}
-                  onSuccess={handleSuccess}
-                  userContext={userContext}
                 />
               } 
             />
