@@ -1,6 +1,5 @@
 export interface UserContext {
   age: number;
-  studyingFor: string;
 }
 
 export interface MarkdownComponentProps {
