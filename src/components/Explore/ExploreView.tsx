@@ -10,6 +10,7 @@ import { MarkdownComponentProps } from '../../types';
 import { RelatedTopics } from './RelatedTopics';
 import { RelatedQuestions } from './RelatedQuestions';
 import { LoadingAnimation } from '../shared/LoadingAnimation';
+import { UserContext } from '../../types';
 
 interface Message {
   type: 'user' | 'ai';
@@ -44,6 +45,7 @@ interface ExploreViewProps {
   initialQuery?: string;
   onError: (message: string) => void;
   onRelatedQueryClick?: (query: string) => void;
+  userContext: UserContext;
 }
 
 const MarkdownComponents: Record<string, React.FC<MarkdownComponentProps>> = {
@@ -163,6 +165,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   initialQuery, 
   onError,
   onRelatedQueryClick,
+  userContext
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [showInitialSearch, setShowInitialSearch] = useState(!initialQuery);
@@ -197,6 +200,10 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
   const handleSearch = useCallback(async (query: string) => {
     try {
+      if (window.navigator.vibrate) {
+        window.navigator.vibrate(50);
+      }
+
       setIsLoading(true);
       
       setMessages([
@@ -208,6 +215,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
       await gptService.streamExploreContent(
         query,
+        userContext,
         (chunk: StreamChunk) => {
           setMessages([
             { type: 'user', content: query },
@@ -226,7 +234,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [gptService, onError]);
+  }, [gptService, onError, userContext]);
 
   const handleRelatedQueryClick = useCallback((query: string) => {
     if (onRelatedQueryClick) {

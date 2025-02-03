@@ -1,16 +1,32 @@
 import React, { useState } from 'react';
-import { PreFillFormProps, UserContext } from '../../types';
+import { UserContext } from '../../types';
+
+interface PreFillFormProps {
+  onSubmit: (context: UserContext) => void;
+}
 
 export const PreFillForm: React.FC<PreFillFormProps> = ({ onSubmit }) => {
-  const [age, setAge] = useState<number>(15);
-
+  const [age, setAge] = useState<string>('');
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const userContext: UserContext = {
-      age: age,
-      studyingFor: 'General Learning' // Default value
-    };
-    onSubmit(userContext);
+    
+    const ageNumber = parseInt(age);
+    if (isNaN(ageNumber) || ageNumber < 1 || ageNumber > 100) {
+      return;
+    }
+
+    onSubmit({
+      age: ageNumber
+    });
+  };
+
+  const handleAgeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow empty string or valid numbers
+    if (value === '' || /^\d{1,3}$/.test(value)) {
+      setAge(value);
+    }
   };
 
   return (
@@ -22,12 +38,11 @@ export const PreFillForm: React.FC<PreFillFormProps> = ({ onSubmit }) => {
             Your Age
           </label>
           <input
-            type="number"
             id="age"
-            min="8"
-            max="100"
+            type="text" // Change to text type
             value={age}
-            onChange={(e) => setAge(Number(e.target.value))}
+            onChange={handleAgeChange}
+            placeholder="Enter your age"
             className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg
               text-white focus:outline-none focus:ring-2 focus:ring-primary"
             required
@@ -36,8 +51,9 @@ export const PreFillForm: React.FC<PreFillFormProps> = ({ onSubmit }) => {
         
         <button
           type="submit"
+          disabled={!age || parseInt(age) < 1 || parseInt(age) > 100}
           className="w-full px-6 py-3 bg-primary hover:bg-primary-dark rounded-lg
-            transition-colors duration-200 text-white font-medium"
+            transition-colors duration-200 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Get Started
         </button>
