@@ -221,9 +221,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           transition={{ delay: 0.3 }}
           className="mt-6 space-y-2"
         >
-          <p className="text-gray-400 text-sm">Press Enter to search</p>
+         <p className="text-gray-400 text-sm"></p>
           <div className="flex items-center justify-center space-x-4 text-sm text-gray-500">
-            <span>Try:</span>
+           <span></span>  
             {suggestions.map(({ text, icon }, idx) => (
               <motion.button
                 key={idx}

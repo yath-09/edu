@@ -2,6 +2,7 @@ interface RelatedTopicsProps {
   topics: Array<{
     topic: string;
     type: string;
+    reason: string;
   }>;
   onTopicClick: (topic: string) => void;
 }
