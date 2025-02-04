@@ -177,15 +177,17 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   // Add a ref for the messages container
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
+  // Add function to scroll to top
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   // Scroll to top whenever messages change
   useEffect(() => {
     if (messages.length > 0) {
-      window.scrollTo({
-        top: 0,
-        behavior: 'instant'
-      });
+      scrollToTop();
     }
-  }, [messages.length]);
+  }, [messages.length, scrollToTop]);
 
   // Add effect to listen for reset
   useEffect(() => {
@@ -204,8 +206,10 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         window.navigator.vibrate(50);
       }
 
-      setIsLoading(true);
+      // Scroll to top when new search starts
+      scrollToTop();
       
+      setIsLoading(true);
       setMessages([
         { type: 'user', content: query },
         { type: 'ai', content: '' }
@@ -234,14 +238,16 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [gptService, onError, userContext]);
+  }, [gptService, onError, userContext, scrollToTop]);
 
   const handleRelatedQueryClick = useCallback((query: string) => {
+    // Also scroll to top when clicking related queries
+    scrollToTop();
+    handleSearch(query);
     if (onRelatedQueryClick) {
       onRelatedQueryClick(query);
     }
-    handleSearch(query);
-  }, [onRelatedQueryClick, handleSearch]);
+  }, [handleSearch, onRelatedQueryClick, scrollToTop]);
 
   useEffect(() => {
     if (initialQuery) {
