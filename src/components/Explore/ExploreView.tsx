@@ -177,12 +177,23 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   // Add a ref for the messages container
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Add function to scroll to top
+  // More reliable scroll to top function
   const scrollToTop = useCallback(() => {
+    // First try window scroll
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Also try scrolling container if it exists
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Fallback with setTimeout to ensure scroll happens after render
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }, 100);
   }, []);
 
-  // Scroll to top whenever messages change
+  // Call scroll on any message change
   useEffect(() => {
     if (messages.length > 0) {
       scrollToTop();
@@ -206,7 +217,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         window.navigator.vibrate(50);
       }
 
-      // Scroll to top when new search starts
+      // Scroll before starting the search
       scrollToTop();
       
       setIsLoading(true);
@@ -241,12 +252,13 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   }, [gptService, onError, userContext, scrollToTop]);
 
   const handleRelatedQueryClick = useCallback((query: string) => {
-    // Also scroll to top when clicking related queries
+    // Scroll before handling the click
     scrollToTop();
-    handleSearch(query);
+    
     if (onRelatedQueryClick) {
       onRelatedQueryClick(query);
     }
+    handleSearch(query);
   }, [handleSearch, onRelatedQueryClick, scrollToTop]);
 
   useEffect(() => {
