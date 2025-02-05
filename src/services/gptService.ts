@@ -627,6 +627,8 @@ import OpenAI from 'openai';
 
         let mainContent = '';
         let jsonContent = '';
+        let currentTopics: any[] = [];
+        let currentQuestions: any[] = [];
         let isJsonSection = false;
         
         for await (const chunk of stream) {
@@ -634,66 +636,63 @@ import OpenAI from 'openai';
           
           if (content.includes('---')) {
             isJsonSection = true;
-            jsonContent = '';
             continue;
           }
 
           if (isJsonSection) {
             jsonContent += content;
             try {
-              // Clean and validate JSON string
-              let cleanJson = jsonContent.trim()
-                .replace(/\s+/g, ' ')
-                .replace(/,\s*([}\]])/g, '$1') // Remove trailing commas
-                .replace(/([{,])\s*}/g, '}')   // Fix empty objects
-                .replace(/\]\s*,\s*}/g, ']}'); // Fix array endings
-
-              if (cleanJson.startsWith('{') && cleanJson.endsWith('}')) {
-                try {
-                  const parsed = JSON.parse(cleanJson);
+              // Try to parse complete JSON objects
+              if (jsonContent.includes('}')) {
+                const jsonStr = jsonContent.trim();
+                if (jsonStr.startsWith('{') && jsonStr.endsWith('}')) {
+                  const parsed = JSON.parse(jsonStr);
                   
-                  // Validate and format topics
-                  const formattedTopics = Array.isArray(parsed.topics) 
-                    ? parsed.topics.map((t: any) => ({
-                        topic: String(t.name || ''),
-                        type: String(t.type || 'prerequisite'),
-                        reason: String(t.detail || '')
-                      })).filter((t: { topic: string }) => t.topic)
-                    : [];
-
-                  // Validate and format questions
-                  const formattedQuestions = Array.isArray(parsed.questions)
-                    ? parsed.questions.map((q: any) => ({
-                        question: String(q.text || ''),
-                        type: String(q.type || 'curiosity'),
-                        context: String(q.detail || '')
-                      })).filter((q: { question: string }) => q.question)
-                    : [];
-
-                  // Only send update if we have valid content
-                  if (formattedTopics.length > 0 || formattedQuestions.length > 0) {
-                    onChunk({
-                      text: mainContent.trim(),
-                      topics: formattedTopics.length > 0 ? formattedTopics : undefined,
-                      questions: formattedQuestions.length > 0 ? formattedQuestions : undefined
+                  // Process topics if available
+                  if (parsed.topics && Array.isArray(parsed.topics)) {
+                    parsed.topics.forEach((topic: any) => {
+                      if (!currentTopics.some(t => t.topic === topic.name)) {
+                        currentTopics.push({
+                          topic: topic.name,
+                          type: topic.type,
+                          reason: topic.detail
+                        });
+                      }
                     });
-                  } else {
-                    onChunk({ text: mainContent.trim() });
                   }
-                } catch (parseError) {
-                  // If JSON parsing fails, just show the text content
-                  console.debug('Partial JSON parse error:', parseError);
-                  onChunk({ text: mainContent.trim() });
+
+                  // Process questions if available
+                  if (parsed.questions && Array.isArray(parsed.questions)) {
+                    parsed.questions.forEach((question: any) => {
+                      if (!currentQuestions.some(q => q.question === question.text)) {
+                        currentQuestions.push({
+                          question: question.text,
+                          type: question.type,
+                          context: question.detail
+                        });
+                      }
+                    });
+                  }
+
+                  // Send update with current state
+                  onChunk({
+                    text: mainContent.trim(),
+                    topics: currentTopics.length > 0 ? currentTopics : undefined,
+                    questions: currentQuestions.length > 0 ? currentQuestions : undefined
+                  });
                 }
               }
             } catch (error) {
-              // Log error but don't break the UI
-              console.debug('JSON cleaning error:', error);
-              onChunk({ text: mainContent.trim() });
+              // Continue accumulating if parsing fails
+              console.debug('JSON parse error:', error);
             }
           } else {
             mainContent += content;
-            onChunk({ text: mainContent.trim() });
+            onChunk({ 
+              text: mainContent.trim(),
+              topics: currentTopics.length > 0 ? currentTopics : undefined,
+              questions: currentQuestions.length > 0 ? currentQuestions : undefined
+            });
           }
         }
 
