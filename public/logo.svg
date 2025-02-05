@@ -1,4 +1,8 @@
 <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="60" cy="60" r="50" fill="#4F46E5" />
-  <text x="60" y="75" text-anchor="middle" font-size="48" font-weight="bold" fill="white" font-family="Arial">E</text>
+  <rect width="120" height="120" rx="24" fill="#4F46E5"/>
+  <g transform="translate(24, 24) scale(3)">
+    <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white"/>
+    <path d="M2 17L12 22L22 17" fill="white"/>
+    <path d="M2 12L12 17L22 12" fill="white"/>
+  </g>
 </svg> 
