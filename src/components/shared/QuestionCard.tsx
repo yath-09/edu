@@ -1,4 +1,3 @@
-
 interface QuestionCardProps {
   question: {
     text: string;
