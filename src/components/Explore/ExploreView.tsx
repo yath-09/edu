@@ -11,6 +11,7 @@ import { RelatedTopics } from './RelatedTopics';
 import { RelatedQuestions } from './RelatedQuestions';
 import { LoadingAnimation } from '../shared/LoadingAnimation';
 import { UserContext } from '../../types';
+import { streamExploreContent } from '../../services/backendGptServices';
 
 interface Message {
   type: 'user' | 'ai';
@@ -228,28 +229,26 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
       setShowInitialSearch(false);
 
-      await gptService.streamExploreContent(
-        query,
-        userContext,
-        (chunk: StreamChunk) => {
-          setMessages([
-            { type: 'user', content: query },
-            {
-              type: 'ai',
-              content: chunk.text,
-              topics: chunk.topics,
-              questions: chunk.questions
-            }
-          ]);
-        }
-      );
+      //making the api call from the new backendGptService file which is linked to backend at 5000
+      await streamExploreContent(query, userContext, (chunk: StreamChunk) => {
+        setMessages([
+          { type: 'user', content: query },
+          {
+            type: 'ai',
+            content: chunk.text,
+            topics: chunk.topics,
+            questions: chunk.questions
+          }
+        ]);
+      });
+      
     } catch (error) {
       console.error('Search error:', error);
       onError(error instanceof Error ? error.message : 'Failed to load content');
     } finally {
       setIsLoading(false);
     }
-  }, [gptService, onError, userContext, scrollToTop]);
+  }, [onError, userContext, scrollToTop]);
 
   const handleRelatedQueryClick = useCallback((query: string) => {
     // Scroll before handling the click
