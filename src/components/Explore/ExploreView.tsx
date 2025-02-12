@@ -1,53 +1,19 @@
 // src/components/Explore/ExploreView.tsx
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { SearchBar } from '../shared/SearchBar';
-import { GPTService } from '../../services/gptService';
 import { MarkdownComponentProps } from '../../types';
 import { RelatedTopics } from './RelatedTopics';
 import { RelatedQuestions } from './RelatedQuestions';
 import { LoadingAnimation } from '../shared/LoadingAnimation';
-import { UserContext } from '../../types';
 import { streamExploreContent } from '../../services/backendGptServices';
+import { Message } from '../../types';
+import { ExploreViewProps } from '../../types';
+import { StreamChunk } from '../../types';
 
-interface Message {
-  type: 'user' | 'ai';
-  content?: string;
-  topics?: Array<{
-    topic: string;
-    type: string;
-    reason: string;
-  }>;
-  questions?: Array<{
-    question: string;
-    type: string;
-    context: string;
-  }>;
-}
-
-interface StreamChunk {
-  text?: string;
-  topics?: Array<{
-    topic: string;
-    type: string;
-    reason: string;
-  }>;
-  questions?: Array<{
-    question: string;
-    type: string;
-    context: string;
-  }>;
-}
-
-interface ExploreViewProps {
-  initialQuery?: string;
-  onError: (message: string) => void;
-  onRelatedQueryClick?: (query: string) => void;
-  userContext: UserContext;
-}
 
 const MarkdownComponents: Record<string, React.FC<MarkdownComponentProps>> = {
   h1: ({ children, ...props }) => (
@@ -87,7 +53,7 @@ const MarkdownComponents: Record<string, React.FC<MarkdownComponentProps>> = {
     </li>
   ),
   code: ({ children, inline, ...props }) => (
-    inline ? 
+    inline ?
       <code className="bg-gray-700 px-1 rounded text-xs sm:text-sm" {...props}>{children}</code> :
       <code className="block bg-gray-700 p-2 rounded my-2 text-xs sm:text-sm overflow-x-auto" {...props}>
         {children}
@@ -162,8 +128,8 @@ export const RelatedQueries: React.FC<{
   );
 };
 
-export const ExploreView: React.FC<ExploreViewProps> = ({ 
-  initialQuery, 
+export const ExploreView: React.FC<ExploreViewProps> = ({
+  initialQuery,
   onError,
   onRelatedQueryClick,
   userContext
@@ -171,9 +137,13 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [showInitialSearch, setShowInitialSearch] = useState(!initialQuery);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const gptService = useMemo(() => new GPTService(), []);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const buttons = [
+    { label: "Quantum Physics", searchQuery: "Quantum Physics", color: "purple" },
+    { label: "Machine Learning", searchQuery: "Machine Learning", color: "blue" },
+    { label: "World History", searchQuery: "World History", color: "green" }
+  ];
 
   // Add a ref for the messages container
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -182,7 +152,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   const scrollToTop = useCallback(() => {
     // First try window scroll
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    
+
     // Also try scrolling container if it exists
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
@@ -220,7 +190,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
       // Scroll before starting the search
       scrollToTop();
-      
+
       setIsLoading(true);
       setMessages([
         { type: 'user', content: query },
@@ -241,7 +211,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           }
         ]);
       });
-      
+
     } catch (error) {
       console.error('Search error:', error);
       onError(error instanceof Error ? error.message : 'Failed to load content');
@@ -253,7 +223,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   const handleRelatedQueryClick = useCallback((query: string) => {
     // Scroll before handling the click
     scrollToTop();
-    
+
     if (onRelatedQueryClick) {
       onRelatedQueryClick(query);
     }
@@ -273,7 +243,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           <h1 className="text-2xl sm:text-3xl font-bold text-center mb-4">
             What do you want to explore?
           </h1>
-          
+
           <div className="w-full max-w-xl mx-auto">
             <SearchBar
               onSearch={handleSearch}
@@ -281,48 +251,37 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
               centered={true}
               className="bg-gray-900/80"
             />
-            
+
             <p className="text-sm text-gray-400 text-center mt-1">Press Enter to search</p>
-            
+
             <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
               <span className="text-sm text-gray-400">Try:</span>
-              <button
-                onClick={() => handleSearch("Quantum Physics")}
-                className="px-3 py-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 
-                  border border-purple-500/30 transition-colors text-xs sm:text-sm text-purple-300"
-              >
-                ⚛️ Quantum Physics
-              </button>
-              <button
-                onClick={() => handleSearch("Machine Learning")}
-                className="px-3 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 
-                  border border-blue-500/30 transition-colors text-xs sm:text-sm text-blue-300"
-              >
-                🤖 Machine Learning
-              </button>
-              <button
-                onClick={() => handleSearch("World History")}
-                className="px-3 py-1.5 rounded-lg bg-green-500/20 hover:bg-green-500/30 
-                  border border-green-500/30 transition-colors text-xs sm:text-sm text-green-300"
-              >
-                🌍 World History
-              </button>
+              {buttons.map((button, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleSearch(button.searchQuery)}
+                  className={`px-3 py-1.5 rounded-lg bg-${button.color}-500/20 hover:bg-${button.color}-500/30 
+        border border-${button.color}-500/30 transition-colors text-xs sm:text-sm text-${button.color}-300`}
+                >
+                  {button.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
       ) : (
         <div ref={messagesContainerRef} className="relative flex flex-col w-full">
           <div className="space-y-2 pb-16">
-        {messages.map((message, index) => (
-              <div 
-                key={index} 
+            {messages.map((message, index) => (
+              <div
+                key={index}
                 className="px-2 sm:px-4 w-full mx-auto"
               >
                 <div className="max-w-3xl mx-auto">
                   {message.type === 'user' ? (
                     <div className="w-full">
                       <div className="flex-1 text-base sm:text-lg font-semibold text-gray-100">
-                      {message.content}
+                        {message.content}
                       </div>
                     </div>
                   ) : (
@@ -334,9 +293,9 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                             <span className="text-sm text-gray-400">Thinking...</span>
                           </div>
                         ) : (
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm, remarkMath]}
-                        rehypePlugins={[rehypeKatex]}
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm, remarkMath]}
+                            rehypePlugins={[rehypeKatex]}
                             components={{
                               ...MarkdownComponents,
                               p: ({ children }) => (
@@ -349,7 +308,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                             className="whitespace-pre-wrap break-words space-y-1.5"
                           >
                             {message.content || ''}
-                      </ReactMarkdown>
+                          </ReactMarkdown>
                         )}
 
                         {message.topics && message.topics.length > 0 && (
@@ -375,7 +334,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 </div>
               </div>
             ))}
-            <div 
+            <div
               ref={messagesEndRef}
               className="h-8 w-full"
               aria-hidden="true"
@@ -386,7 +345,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
             via-background to-transparent pb-1 pt-2 z-50">
             <div className="w-full px-2 sm:px-4 max-w-3xl mx-auto">
               <SearchBar
-                onSearch={handleSearch} 
+                onSearch={handleSearch}
                 placeholder="Ask a follow-up question..."
                 centered={false}
                 className="bg-gray-900/80 backdrop-blur-lg border border-gray-700/50 h-10"

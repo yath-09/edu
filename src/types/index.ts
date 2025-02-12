@@ -70,4 +70,40 @@ export interface MarkdownComponentProps {
   [key: string]: any;
 }
 
+export interface Message {
+  type: 'user' | 'ai';
+  content?: string;
+  topics?: Array<{
+    topic: string;
+    type: string;
+    reason: string;
+  }>;
+  questions?: Array<{
+    question: string;
+    type: string;
+    context: string;
+  }>;
+}
+
+export interface StreamChunk {
+  text?: string;
+  topics?: Array<{
+    topic: string;
+    type: string;
+    reason: string;
+  }>;
+  questions?: Array<{
+    question: string;
+    type: string;
+    context: string;
+  }>;
+}
+
+export interface ExploreViewProps {
+  initialQuery?: string;
+  onError: (message: string) => void;
+  onRelatedQueryClick?: (query: string) => void;
+  userContext: UserContext;
+}
+
 // Add other shared types here 
