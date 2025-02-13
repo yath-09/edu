@@ -168,17 +168,17 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         });
 
       }
-       // Fallback with setTimeout to ensure scroll happens after render
-       setTimeout(() => {
+      // Fallback with setTimeout to ensure scroll happens after render
+      setTimeout(() => {
         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
       }, 100);
-  
-     
+
+
     }
   }, [messages.length]);  // Dependency array to trigger when messages change
-  
-  
-  
+
+
+
   // Add effect to listen for reset
   useEffect(() => {
     const handleReset = () => {
@@ -195,28 +195,24 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
       if (window.navigator.vibrate) {
         window.navigator.vibrate(50);
       }
-  
-      // Scroll before starting the search
-      //scrollToTop();
       scrollToBottom();
-  
       setIsLoading(true);
-      
+
       // Set the initial state with the user's query and an empty AI message
       setMessages(prevMessages => [
         ...prevMessages,
         { type: 'user', content: query },
         { type: 'ai', content: '' }
       ]);
-  
+
       setShowInitialSearch(false);
-  
+
       // Adding a divider before new messages
       setMessages(prevMessages => [
         ...prevMessages,
         { type: 'divider' }  // Insert divider between old and new messages
       ]);
-  
+
       // Call the API for streaming content
       await streamExploreContent(query, userContext, (chunk: StreamChunk) => {
         // Append the content chunk
@@ -226,7 +222,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           const lastAIMessageIndex = updatedMessages.findIndex(
             message => message.type === 'ai' && !message.content
           );
-  
+
           if (lastAIMessageIndex !== -1) {
             updatedMessages[lastAIMessageIndex] = {
               ...updatedMessages[lastAIMessageIndex],
@@ -235,20 +231,20 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
               questions: chunk.questions
             };
           }
-  
+          
           return updatedMessages;
         });
       });
-  
+
     } catch (error) {
       console.error('Search error:', error);
       onError(error instanceof Error ? error.message : 'Failed to load content');
     } finally {
       setIsLoading(false);
     }
-  }, [onError, userContext,scrollToBottom]);
-  
-  
+  }, [onError, userContext, scrollToBottom]);
+
+
 
 
   const handleRelatedQueryClick = useCallback((query: string) => {
@@ -258,13 +254,13 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
       onRelatedQueryClick(query);
     }
     handleSearch(query);
-  }, [handleSearch, onRelatedQueryClick,scrollToBottom]);
+  }, [handleSearch, onRelatedQueryClick, scrollToBottom]);
 
   useEffect(() => {
     if (initialQuery) {
       handleSearch(initialQuery);
     }
-  }, [initialQuery, handleSearch,scrollToBottom]);
+  }, [initialQuery, handleSearch, scrollToBottom]);
 
   return (
     <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col" ref={containerRef}>
@@ -301,71 +297,88 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         </div>
       ) : (
         <div ref={messagesContainerRef} className="relative flex flex-col w-full">
-  <div className="space-y-2 pb-16">
-    {messages.map((message, index) => (
-      <div key={index} className="px-2 sm:px-4 w-full mx-auto">
-        <div className="max-w-3xl mx-auto">
-          {message.type === 'user' ? (
-            <div className="w-full">
-              <div className="flex-1 text-base sm:text-lg font-semibold text-gray-100">
-                {message.content}
-              </div>
-            </div>
-          ) : message.type === 'ai' ? (
-            <div className="w-full">
-              <div className="flex-1 min-w-0">
-                {!message.content && isLoading ? (
-                  <div className="flex items-center space-x-2 py-2">
-                    <LoadingAnimation />
-                    <span className="text-sm text-gray-400">Thinking...</span>
-                  </div>
-                ) : (
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm, remarkMath]}
-                    rehypePlugins={[rehypeKatex]}
-                    components={{
-                      ...MarkdownComponents,
-                      p: ({ children }) => (
-                        <p className="text-sm sm:text-base text-gray-300 my-1.5 leading-relaxed break-words">
-                          {children}
-                        </p>
-                      ),
-                    }}
-                    className="whitespace-pre-wrap break-words space-y-1.5"
-                  >
-                    {message.content || ''}
-                  </ReactMarkdown>
-                )}
+          <div className="space-y-2 pb-16">
+            {messages.map((message, index) => (
+              <div key={index} className="px-2 sm:px-4 w-full mx-auto">
+                <div className="max-w-3xl mx-auto">
+                  {message.type === 'user' ? (
+                    <div className="w-full">
+                      <div className="flex-1 text-base sm:text-lg font-semibold text-gray-100">
+                        {message.content}
+                      </div>
+                    </div>
+                  ) : message.type === 'ai' ? (
+                    <div className="w-full">
+                      <div className="flex-1 min-w-0">
+                        {!message.content && isLoading ? (
+                          <div className="flex items-center space-x-2 py-2">
+                            <LoadingAnimation />
+                            <span className="text-sm text-gray-400">Thinking...</span>
+                          </div>
+                        ) : (
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm, remarkMath]}
+                            rehypePlugins={[rehypeKatex]}
+                            components={{
+                              ...MarkdownComponents,
+                              p: ({ children }) => (
+                                <p className="text-sm sm:text-base text-gray-300 my-1.5 leading-relaxed break-words">
+                                  {children}
+                                </p>
+                              ),
+                            }}
+                            className="whitespace-pre-wrap break-words space-y-1.5"
+                          >
+                            {message.content || ''}
+                          </ReactMarkdown>
+                        )}
 
-                {message.topics && message.topics.length > 0 && (
-                  <div className="mt-3">
-                    <RelatedTopics
-                      topics={message.topics}
-                      onTopicClick={handleRelatedQueryClick}
-                    />
-                  </div>
-                )}
+                        {message.topics && message.topics.length > 0 && (
+                          <div className="mt-3">
+                            <RelatedTopics
+                              topics={message.topics}
+                              onTopicClick={handleRelatedQueryClick}
+                            />
+                          </div>
+                        )}
 
-                {message.questions && message.questions.length > 0 && (
-                  <div className="mt-3 mb-20">
-                    <RelatedQuestions
-                      questions={message.questions}
-                      onQuestionClick={handleRelatedQueryClick}
-                    />
-                  </div>
-                )}
+                        {message.questions && message.questions.length > 0 && (
+                          <div className="mt-3 mb-20">
+                            <RelatedQuestions
+                              questions={message.questions}
+                              onQuestionClick={handleRelatedQueryClick}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : message.type === 'divider' ? (
+                    <div className="w-full py-4 border-t-4 border-gray-600 text-center text-gray-400 mt-100">
+                    </div>
+                  ) : null}
+                </div>
               </div>
+            ))}
+            <div
+              ref={messagesEndRef}
+              className="h-8 w-full"
+              aria-hidden="true"
+            />
+          </div>
+          <div className="fixed bottom-12 left-0 right-0 bg-gradient-to-t from-background 
+            via-background to-transparent pb-1 pt-2 z-50">
+            <div className="w-full px-2 sm:px-4 max-w-3xl mx-auto">
+              <SearchBar
+                onSearch={handleSearch}
+                placeholder="Ask a follow-up question..."
+                centered={false}
+                className="bg-gray-900/80 backdrop-blur-lg border border-gray-700/50 h-10"
+              />
             </div>
-          ) : message.type === 'divider' ? (
-            <div className="w-full py-4 border-t-4 border-gray-600 text-center text-gray-400 mt-100">
-            </div>
-          ) : null}
+          </div>
         </div>
-      </div>
-    ))}
-  </div>
-</div>
 
+         
 
       )}
     </div>

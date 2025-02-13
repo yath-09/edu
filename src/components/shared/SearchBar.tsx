@@ -50,6 +50,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       setRecentSearches(updated);
       localStorage.setItem("recentSearches", JSON.stringify(updated));
       onSearch(searchQuery.trim());
+      setQuery("")//make ot empty  for next query 
     }
   };
 
