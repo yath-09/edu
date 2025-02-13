@@ -71,7 +71,7 @@ export interface MarkdownComponentProps {
 }
 
 export interface Message {
-  type: 'user' | 'ai';
+  type: 'user' | 'ai' | 'divider';  // Added 'divider' type
   content?: string;
   topics?: Array<{
     topic: string;
@@ -84,6 +84,7 @@ export interface Message {
     context: string;
   }>;
 }
+
 
 export interface StreamChunk {
   text?: string;
