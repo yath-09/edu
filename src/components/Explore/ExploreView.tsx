@@ -66,6 +66,7 @@ const MarkdownComponents: Record<string, React.FC<MarkdownComponentProps>> = {
   ),
 };
 
+
 export const RelatedQueries: React.FC<{
   queries: Array<{
     query: string;
